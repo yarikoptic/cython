@@ -14,3 +14,5 @@ binary-post-install/python-sympy::
 get-orig-tarball:
 	wget http://www.cython.org/cython-0.9.6.8.zip
 	unzip cython-0.9.6.8.zip
+	tar czf cython-0.9.6.8.ds.orig.tar.gz cython-0.9.6.8
+	rm -rf cython-0.9.6.8 cython-0.9.6.8.zip
