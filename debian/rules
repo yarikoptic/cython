@@ -1,0 +1,16 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+DEB_PYTHON_SYSTEM=pycentral
+
+DEB_COMPRESS_EXCLUDE := .py
+
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/class/python-distutils.mk
+
+binary-post-install/python-sympy::
+	find debian/python-sympy/usr/share/pycentral/ -name tests -type d | xargs rm -rf '{}'
+
+get-orig-tarball:
+	wget http://www.cython.org/cython-0.9.6.8.zip
+	unzip cython-0.9.6.8.zip

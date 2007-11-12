@@ -1,0 +1,24 @@
+Source: sympy
+Section: python
+Priority: optional
+Maintainer: Debian Python Modules Team <python-modules-team@lists.alioth.debian.org>
+Uploaders: Ondrej Certik <ondrej@certik.cz>
+Build-Depends: cdbs (>=0.4.41), debhelper (>= 5), python-all-dev (>=2.3.5-11)
+Build-Depends-Indep: python-central (>= 0.5)
+Standards-Version: 3.7.2
+Homepage: http://code.google.com/p/sympy/
+XS-Python-Version: >=2.4
+Vcs-Svn: svn://svn.debian.org/python-modules/packages/sympy/trunk
+Vcs-Browser: http://svn.debian.org/wsvn/python-modules/packages/sympy/trunk/?op=log
+
+Package: python-sympy
+Architecture: all 
+Depends: ${python:Depends}
+Recommends: libgtkmathview-bin, python-opengl, python-imaging, python-ctypes
+XB-Python-Version: ${python:Versions}
+Description: Computer Algebra System (CAS) in Python
+ SymPy is a Python library for symbolic mathematics (manipulation). It aims to
+ become a full-featured computer algebra system (CAS) while keeping the code as
+ simple as possible in order to be comprehensible and easily extensible. SymPy
+ is written entirely in Python and does not require any external libraries,
+ except optionally for plotting support.
