@@ -1,24 +1,15 @@
-SymPy for Debian
-----------------
+Cython
+------
 
-Web page of SymPy: http://code.google.com/p/sympy
+A simple example how to use it on Debian. Create a file t.pyx:
 
-This package contains the sympy Python package, so in Python you can do
-
-import sympy
-
-and it will just work. It also contains the 
-
-isympy
-
-program, that is basically just a python/ipython shell, that imports the
-frequently used commands. It's highly recommended for playing with SymPy. See
-"man isympy" for more info. 
-
-All the documentation for SymPy can be found on the home page.
-
-Examples can be found in 
-
-/usr/share/doc/python-sympy/examples
-
-Ondrej Certik <ondrej@certik.cz>
+$ cat t.pyx 
+def msum(long N):
+    cdef long s, k = 0
+    for k from 0 <= k < N :
+        s += k + 1
+    return s
+$ cython  t.pyx 
+$ gcc -O3 -I/usr/include/python2.4/ -c -o t.o t.c
+$ gcc -shared t.o -o t.so
+$ 
