@@ -1,0 +1,3 @@
+version=3
+
+http://cython.org/ cython-(.*)\.zip

@@ -1,5 +1,10 @@
 cython (0.9.6.8.ds-1~oc3) UNRELEASED; urgency=low
 
+  [ Ondrej Certik ]
   * Initial Debian upload
 
- -- Ondrej Certik <ondrej@certik.cz>  Mon, 12 Nov 2007 23:23:42 +0000
+  [ Sandro Tosi ]
+  * debian/watch
+    - added missing file
+
+ -- Sandro Tosi <matrixhasu@gmail.com>  Sun, 25 Nov 2007 20:01:19 +0100
