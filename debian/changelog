@@ -8,8 +8,4 @@ cython (0.9.6.8.ds-1~oc4) UNRELEASED; urgency=low
   * debian/watch
     - added missing file
 
-  TODO before a first upload:
-  * cython man page
-  (otherwise the package is lintian/linda clean)
-
  -- Ondrej Certik <ondrej@certik.cz>  Fri, 30 Nov 2007 13:00:44 +0100
