@@ -1,7 +1,7 @@
 cython (0.9.6.8.ds-1~oc4) UNRELEASED; urgency=low
 
   [ Ondrej Certik ]
-  * Initial Debian upload
+  * Initial Debian upload (Closes: 451039)
   * Added a patch for handling the @classmethod decorators
 
   [ Sandro Tosi ]
