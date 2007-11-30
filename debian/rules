@@ -6,6 +6,12 @@ DEB_PYTHON_SYSTEM=pycentral
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
+configure/cython::
+	QUILT_PATCHES=debian/patches quilt push -a || test $$? = 2
+
+clean::
+	QUILT_PATCHES=debian/patches quilt pop -a -R || test $$? = 2
+
 get-orig-tarball:
 	wget http://www.cython.org/cython-0.9.6.8.zip
 	unzip cython-0.9.6.8.zip
