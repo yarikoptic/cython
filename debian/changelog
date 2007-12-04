@@ -1,3 +1,9 @@
+cython (0.9.6.8.ds-2) unstable; urgency=low
+
+  * DM-Upload-Allowed changed to XS-Upload-Allowed 
+
+ -- Ondrej Certik <ondrej@certik.cz>  Tue, 04 Dec 2007 22:25:48 +0100
+
 cython (0.9.6.8.ds-1) unstable; urgency=low
 
   [ Ondrej Certik ]

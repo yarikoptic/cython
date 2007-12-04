@@ -10,7 +10,7 @@ Homepage: http://cython.org/
 XS-Python-Version: >=2.4
 Vcs-Svn: svn://svn.debian.org/svn/python-apps/packages/cython/trunk
 Vcs-Browser: http://svn.debian.org/wsvn/python-apps/packages/cython/trunk/?op=log
-DM-Upload-Allowed: yes
+XS-DM-Upload-Allowed: yes
 
 Package: cython
 Architecture: all 
