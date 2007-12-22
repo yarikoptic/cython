@@ -15,6 +15,7 @@ XS-DM-Upload-Allowed: yes
 Package: cython
 Architecture: all 
 Depends: ${python:Depends}, ${misc:Depends}
+Suggests: gcc
 XB-Python-Version: ${python:Versions}
 Description: C-Extensions for Python
  Cython is a language that makes writing C extensions for the Python language as
