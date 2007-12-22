@@ -6,6 +6,7 @@ cython (0.9.6.8.ds-2) unstable; urgency=low
   * ${misc:Depends} added to Depends
   * Depend on debhelper >= 5.0.38
   * gcc added to Suggests
+  * README.Debian gcc command fixed by adding -fPIC
 
  -- Ondrej Certik <ondrej@certik.cz>  Sat, 22 Dec 2007 22:12:00 +0100
 

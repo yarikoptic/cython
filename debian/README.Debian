@@ -10,7 +10,7 @@ def msum(long N):
         s += k + 1
     return s
 $ cython  t.pyx 
-$ gcc -O3 -I/usr/include/python2.4/ -c -o t.o t.c
+$ gcc -fPIC -O3 -I/usr/include/python2.4/ -c -o t.o t.c
 $ gcc -shared t.o -o t.so
 $ python
 Python 2.4.4 (#2, Aug 16 2007, 02:03:40) 
