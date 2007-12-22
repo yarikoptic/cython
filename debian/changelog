@@ -4,6 +4,7 @@ cython (0.9.6.8.ds-2) unstable; urgency=low
   * Update Standards-Version to 3.7.3.
   * Build-depend on python instead of python-all-dev
   * ${misc:Depends} added to Depends
+  * Depend on debhelper >= 5.0.38
 
  -- Ondrej Certik <ondrej@certik.cz>  Sat, 22 Dec 2007 22:12:00 +0100
 
