@@ -2,8 +2,9 @@ cython (0.9.6.8.ds-2) unstable; urgency=low
 
   * DM-Upload-Allowed changed to XS-Upload-Allowed 
   * Update Standards-Version to 3.7.3.
+  * Build-depend on python instead of python-all-dev
 
- -- Ondrej Certik <ondrej@certik.cz>  Tue, 04 Dec 2007 22:25:48 +0100
+ -- Ondrej Certik <ondrej@certik.cz>  Sat, 22 Dec 2007 22:12:00 +0100
 
 cython (0.9.6.8.ds-1) unstable; urgency=low
 

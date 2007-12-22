@@ -3,7 +3,7 @@ Section: python
 Priority: optional
 Maintainer: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Uploaders: Ondrej Certik <ondrej@certik.cz>
-Build-Depends: cdbs (>=0.4.41), debhelper (>= 5), python-all-dev (>=2.3.5-11), quilt (>=0.46-4)
+Build-Depends: cdbs (>= 0.4.41), debhelper (>= 5), python (>= 2.4.4-6), quilt (>=0.46-4)
 Build-Depends-Indep: python-central (>= 0.5)
 Standards-Version: 3.7.3
 Homepage: http://cython.org/
