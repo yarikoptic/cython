@@ -1,3 +1,11 @@
+cython (0.9.6.10.ds-1) unstable; urgency=low
+
+  * New upstream version
+  * Moved from pycentral to pysupport
+  * removed patches, since upstream has integrated them
+
+ -- Ondrej Certik <ondrej@certik.cz>  Mon, 31 Dec 2007 03:28:34 +0100
+
 cython (0.9.6.8.ds-2) unstable; urgency=low
 
   * DM-Upload-Allowed changed to XS-Upload-Allowed 
