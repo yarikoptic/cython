@@ -1,4 +1,4 @@
-cython (0.9.6.10.ds-1) unstable; urgency=low
+cython (0.9.6.10.ds-2) UNRELEASED; urgency=low
 
   [ Marco Rodrigues ]
   * debian/watch:
@@ -6,7 +6,10 @@ cython (0.9.6.10.ds-1) unstable; urgency=low
   * debian/control:
     + Bump cdbs version to matches policy.
 
-  [ Ondrej Certik ]
+ -- Ondrej Certik <ondrej@certik.cz>  Thu, 10 Jan 2008 11:48:25 +0000
+
+cython (0.9.6.10.ds-1) unstable; urgency=low
+
   * New upstream version
   * Moved from pycentral to pysupport
   * removed patches, since upstream has integrated them
@@ -15,7 +18,7 @@ cython (0.9.6.10.ds-1) unstable; urgency=low
 
 cython (0.9.6.8.ds-2) unstable; urgency=low
 
-  * DM-Upload-Allowed changed to XS-Upload-Allowed 
+  * DM-Upload-Allowed changed to XS-Upload-Allowed
   * Update Standards-Version to 3.7.3.
   * Build-depend on python instead of python-all-dev
   * ${misc:Depends} added to Depends
