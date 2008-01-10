@@ -1,7 +1,10 @@
 cython (0.9.6.10.ds-1) unstable; urgency=low
 
   [ Marco Rodrigues ]
-  * Fixed watch file path.
+  * debian/watch:
+    + Fixed path.
+  * debian/control:
+    + Bump cdbs version to matches policy.
 
   [ Ondrej Certik ]
   * New upstream version
