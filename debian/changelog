@@ -2,7 +2,7 @@ cython (0.9.6.10.ds-2) UNRELEASED; urgency=low
 
   [ Marco Rodrigues ]
   * debian/watch:
-    + Fixed path.
+    + Fixed path (Closes: #460006).
   * debian/control:
     + Bump cdbs version to matches policy.
 
