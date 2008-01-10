@@ -1,5 +1,9 @@
 cython (0.9.6.10.ds-1) unstable; urgency=low
 
+  [ Marco Rodrigues ]
+  * Fixed watch file path.
+
+  [ Ondrej Certik ]
   * New upstream version
   * Moved from pycentral to pysupport
   * removed patches, since upstream has integrated them
