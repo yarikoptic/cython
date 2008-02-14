@@ -8,10 +8,3 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 
 install/cython::
 	dh_installman debian/cython.1
-
-get-orig-tarball:
-	version=0.9.6.10;\
-	wget http://www.cython.org/Cython-$${version}.zip;\
-	unzip Cython-$${version}.zip;\
-	tar czf cython_$${version}.ds.orig.tar.gz Cython-$${version};\
-	rm -rf Cython-$${version} Cython-$${version}.zip

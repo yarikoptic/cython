@@ -1,3 +1,11 @@
+cython (0.9.6.12-1) unstable; urgency=low
+
+  * New upstream version (Closes: #463625)
+  * get-orig-tarball targed removed from debian/rules (uscan now works to get
+    orig.tar.gz)
+
+ -- Ondrej Certik <ondrej@certik.cz>  Thu, 14 Feb 2008 13:58:23 +0100
+
 cython (0.9.6.11.ds-1) unstable; urgency=low
 
   [ Marco Rodrigues ]
