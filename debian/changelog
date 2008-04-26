@@ -1,3 +1,9 @@
+cython (0.9.6.13.1-1) unstable; urgency=low
+
+  * New upstream version (Closes: #478077)
+
+ -- Ondrej Certik <ondrej@certik.cz>  Sun, 27 Apr 2008 00:54:05 +0200
+
 cython (0.9.6.12-1) unstable; urgency=low
 
   * New upstream version (Closes: #463625)
