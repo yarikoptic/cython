@@ -1,3 +1,11 @@
+cython (0.9.6.14-1) unstable; urgency=low
+
+  * New upstream version.
+  * Description improved (SAGE -> Sage), whitespace removed.
+  * Standards-Version bumped (no change needed).
+
+ -- Ondrej Certik <ondrej@certik.cz>  Wed, 11 Jun 2008 13:22:09 +0200
+
 cython (0.9.6.13.1-1) unstable; urgency=low
 
   * New upstream version (Closes: #478077)
