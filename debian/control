@@ -3,7 +3,7 @@ Section: python
 Priority: optional
 Maintainer: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Uploaders: Ondrej Certik <ondrej@certik.cz>
-Build-Depends: cdbs (>= 0.4.49), debhelper (>= 5.0.38), python (>= 2.4.4-6)
+Build-Depends: cdbs (>= 0.4.49), debhelper (>= 5.0.38), python (>= 2.4.4-6), python-all-dev (>= 2.4.4-6)
 Build-Depends-Indep: python-support (>= 0.7.5)
 Standards-Version: 3.8.0
 Homepage: http://cython.org/
@@ -12,7 +12,7 @@ Vcs-Browser: http://svn.debian.org/wsvn/python-apps/packages/cython/trunk/?op=lo
 XS-DM-Upload-Allowed: yes
 
 Package: cython
-Architecture: all
+Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}
 Suggests: gcc
 XB-Python-Version: ${python:Versions}
