@@ -12,7 +12,7 @@ Vcs-Browser: http://svn.debian.org/wsvn/python-apps/packages/cython/trunk/?op=lo
 XS-DM-Upload-Allowed: yes
 
 Package: cython
-Architecture: any
+Architecture: all
 Depends: ${python:Depends}, ${misc:Depends}
 Suggests: gcc
 XB-Python-Version: ${python:Versions}

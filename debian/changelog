@@ -1,12 +1,10 @@
-cython (0.9.8-1) UNRELEASED; urgency=low
-
-  * TODO before upload: fix the debian/rules to install the .so file, or
-    change the package back to architecture all, since it's pure python
+cython (0.9.8-1) unstable; urgency=low
 
   * New upstream release
   * python-all-dev added to build-depends (upstream now compiles
-    Cython.Plex.Scanners with Cython)
-  * Architecture changed to any since we now build an .so library
+    Cython.Plex.Scanners with Cython). The .so file is not included in the
+    .deb for some reason, so until this is fixed, the package stays
+    architecture all and remains pure Python.
 
  -- Ondrej Certik <ondrej@certik.cz>  Sun, 20 Jul 2008 12:43:45 +0200
 
