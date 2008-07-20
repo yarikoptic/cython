@@ -1,4 +1,7 @@
-cython (0.9.8-1) unstable; urgency=low
+cython (0.9.8-1) UNRELEASED; urgency=low
+
+  * TODO before upload: fix the debian/rules to install the .so file, or
+    change the package back to architecture all, since it's pure python
 
   * New upstream release
   * python-all-dev added to build-depends (upstream now compiles
