@@ -1,3 +1,10 @@
+cython (0.9.8-2) UNRELEASED; urgency=low
+
+  * debian/control
+    - switch Vcs-Browser field to viewsvn
+
+ -- Sandro Tosi <morph@debian.org>  Mon, 03 Nov 2008 22:47:12 +0100
+
 cython (0.9.8-1) unstable; urgency=low
 
   * New upstream release
