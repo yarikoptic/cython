@@ -1,4 +1,4 @@
-cython (0.10.2-1) unstable; urgency=low
+cython (0.10.2-1) UNRELEASED; urgency=low
 
   [ Sandro Tosi ]
   * debian/control
@@ -6,8 +6,12 @@ cython (0.10.2-1) unstable; urgency=low
 
   [ Ondrej Certik ]
   * New upstream release
+  * Description updated
+  * ${shlibs:Depends} added to depends
+  * architecture changed from all to any
+  * python-support moved from Build-Depends-Indep to Build-Depends
 
- -- Ondrej Certik <ondrej@certik.cz>  Tue, 02 Dec 2008 10:08:58 +0100
+ -- Ondrej Certik <ondrej@certik.cz>  Tue, 02 Dec 2008 12:06:41 +0100
 
 cython (0.9.8-1) unstable; urgency=low
 
