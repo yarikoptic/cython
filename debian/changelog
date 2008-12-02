@@ -1,4 +1,4 @@
-cython (0.10.2-1) UNRELEASED; urgency=low
+cython (0.10.2-1) unstable; urgency=low
 
   [ Sandro Tosi ]
   * debian/control
