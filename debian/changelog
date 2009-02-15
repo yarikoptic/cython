@@ -1,9 +1,10 @@
 cython (0.10.3-1) unstable; urgency=low
 
+  [ Vernon Tang ]
   * New upstream release
   * debian/watch: corrected regexp
 
- -- Vernon Tang <vt@foilhead.net>  Tue, 20 Jan 2009 03:11:08 +0800
+ -- Ondrej Certik <ondrej@certik.cz>  Sun, 15 Feb 2009 11:27:13 -0800
 
 cython (0.10.2-1) unstable; urgency=low
 
