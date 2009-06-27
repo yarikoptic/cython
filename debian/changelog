@@ -1,3 +1,13 @@
+cython (0.11.2-1) UNRELEASED; urgency=low
+
+  * (DON'T UPLOAD) --- something fishy going on, binary files (.pickle) are
+    getting modified when "python2.5 setup.py clean -a" gets run. My
+    uneducated guess is that this wasn't run before upstream's tarball was
+    generated. Feel free to upload if you fix it.
+  * New upstream release (Closes: #525620)
+
+ -- Ryan Kavanagh <ryanakca@kubuntu.org>  Fri, 26 Jun 2009 16:32:00 -0400
+
 cython (0.10.3-1) unstable; urgency=low
 
   [ Vernon Tang ]
