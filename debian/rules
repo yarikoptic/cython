@@ -10,4 +10,4 @@ install/cython::
 	dh_installman debian/cython.1
 
 clean::
-	rm -f Cython/Compiler/Lexicon.pickle
+	rm -f Cython/Compiler/Lexicon.pickle Cython/*/*.c
