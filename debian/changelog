@@ -1,7 +1,7 @@
 cython (0.11.2-1) UNRELEASED; urgency=low
 
   [ Ryan Kavanagh ]
-  * New upstream release (Closes: #525620)
+  * New upstream release (Closes: #525620, #536213)
 
   [ Jakub Wilk ]
   * debian/rules: remove generated files.
