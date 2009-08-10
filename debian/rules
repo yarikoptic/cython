@@ -8,3 +8,6 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 
 install/cython::
 	dh_installman debian/cython.1
+
+clean::
+	rm -f Cython/Compiler/Lexicon.pickle
