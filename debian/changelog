@@ -1,4 +1,4 @@
-cython (0.11.2-1) UNRELEASED; urgency=low
+cython (0.11.2-1) unstable; urgency=low
 
   [ Ryan Kavanagh ]
   * New upstream release (Closes: #525620, #536213)
@@ -6,7 +6,10 @@ cython (0.11.2-1) UNRELEASED; urgency=low
   [ Jakub Wilk ]
   * debian/rules: remove generated files.
 
- -- Ryan Kavanagh <ryanakca@kubuntu.org>  Fri, 26 Jun 2009 16:32:00 -0400
+  [ Piotr Ożarowski ]
+  * Standards-Version bumped to 3.8.2 (no change needed)
+
+ -- Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>  Mon, 10 Aug 2009 23:18:51 +0200
 
 cython (0.10.3-1) unstable; urgency=low
 
