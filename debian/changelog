@@ -1,3 +1,9 @@
+cython (0.11.2-2) UNRELEASED; urgency=low
+
+  * Fix watch file.
+
+ -- Jakub Wilk <ubanus@users.sf.net>  Wed, 11 Nov 2009 22:54:51 +0100
+
 cython (0.11.2-1) unstable; urgency=low
 
   [ Ryan Kavanagh ]
