@@ -1,8 +1,12 @@
-cython (0.11.2-2) UNRELEASED; urgency=low
+cython (0.12.1-1) unstable; urgency=low
 
+  [ Kirill Smelkov ]
+  * New upstream release (Closes: #560298)
+
+  [ Jakub Wilk ]
   * Fix watch file.
 
- -- Jakub Wilk <ubanus@users.sf.net>  Wed, 11 Nov 2009 22:54:51 +0100
+ -- Ondrej Certik <ondrej@certik.cz>  Sun, 15 Feb 2009 11:27:13 -0800
 
 cython (0.11.2-1) unstable; urgency=low
 
