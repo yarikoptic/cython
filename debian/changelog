@@ -6,7 +6,7 @@ cython (0.12.1-1) unstable; urgency=low
   [ Jakub Wilk ]
   * Fix watch file.
 
- -- Ondrej Certik <ondrej@certik.cz>  Sun, 15 Feb 2009 11:27:13 -0800
+ -- Ondrej Certik <ondrej@certik.cz>  Sat, 13 Feb 2010 18:46:51 -0800
 
 cython (0.11.2-1) unstable; urgency=low
 
