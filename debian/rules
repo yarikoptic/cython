@@ -9,5 +9,31 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 install/cython::
 	dh_installman debian/cython.1
 
+
+#
+# Debugging version -dbg
+#
+# Re-build using python-dbg
+install/cython-dbg ::
+	for i in $(cdbs_python_build_versions); do \
+	  python$$i-dbg ./setup.py install $(DEB_PYTHON_INSTALL_ARGS_ALL) \
+		 --root $(CURDIR)/debian/cython-dbg; \
+	done
+	: # Keep only _d.so files for cython-dbg package
+	find debian/cython-dbg ! -type d ! -name '*_d.so' | xargs rm -f
+	: # Prune empty directories
+	find debian/cython-dbg -depth -empty -exec rmdir \{\} \;
+
+binary-predeb/cython-dbg::
+	mkdir -p debian/cython-dbg/usr/share/doc
+	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
+
+
 clean::
 	rm -f Cython/Compiler/Lexicon.pickle Cython/*/*.c
+	: # Just prune build entirely
+	rm -rf build
+
+# Install directly into package directory (despite multiple packages
+# due to having cython-dbg)
+DEB_DESTDIR = $(CURDIR)/debian/cython
