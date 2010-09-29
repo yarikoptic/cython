@@ -71,5 +71,7 @@ clean::
 # Install directly into package directory (despite multiple packages
 # due to having cython-dbg)
 DEB_DESTDIR = $(CURDIR)/debian/cython
-DEB_INSTALL_CHANGELOGS_ALL = $(CHANGELOGS)/Release*
+DEB_INSTALL_CHANGELOGS_cython = $(CHANGELOGS)/ReleaseHistory
+DEB_INSTALL_DOCS_cython = $(CHANGELOGS)/ReleaseNotes*
+DEB_INSTALL_DOCS_cython-dbg = --link-doc=cython
 DEB_CLEAN_EXCLUDE = $(CHANGELOGS)
