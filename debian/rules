@@ -3,10 +3,18 @@
 
 DEB_PYTHON_SYSTEM=pysupport
 
+#  Apparently WGET agent is not favored by upstream's MoinMoin
+WGET_AGENT_STRING="Lynx/2.8.8dev.4 libwww-FM/2.14 SSL-MM/1.4.1 GNUTLS/2.8.6"
+WGET=wget -q --user-agent=$(WGET_AGENT_STRING)
+WIKI_URL=http://wiki.cython.org
+
+# Directory where to store upstream changelogs
+CHANGELOGS=debian/changelogs
+
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
-install/cython::
+install/cython:: assure-changelogs
 	dh_installman debian/cython.1
 
 
@@ -28,6 +36,32 @@ binary-predeb/cython-dbg::
 	mkdir -p debian/cython-dbg/usr/share/doc
 	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
 
+# To fetch and update upstream Changelogs
+# Notes:
+#  SED is used to do minor de-wikification to make text readable
+get-changelogs:
+	mkdir -p $(CHANGELOGS)
+	: # Fetching ReleaseHistory and other available ReleaseNotes
+	@release_notes=`$(WGET) -O- '$(WIKI_URL)/ReleaseHistory?action=raw' | sed -n -e '1,/^=/p' | grep ReleaseNotes | sed -e 's/.*\[\([^]]*\)\].*/\1/g'`; \
+	for rnotes in ReleaseHistory $$release_notes; do \
+		rnotes_url=$(WIKI_URL)/$$rnotes; \
+		echo "Fetching $$rnotes_url"; \
+		{ \
+		 echo -e "Fetched from $$rnotes_url on `date`\n"; \
+		 $(WGET) -O- "$$rnotes_url?action=raw" \
+		 | sed -e 's,\({{{\|}}}\),,g' -e 's,\[\[\([^]]*\)|[^]]*\]\],\1,g'; \
+		} >| $(CHANGELOGS)/$$rnotes; \
+	 done
+
+# Assure presence of a changelog for current upstream release
+assure-changelogs:
+	@: "Assure present upstream changelog file"
+	@if [ ! -e $(CHANGELOGS)/ReleaseNotes-"$(DEB_UPSTREAM_VERSION)" ] && ! grep -q '^$(DEB_UPSTREAM_VERSION)$$' $(CHANGELOGS)/skip ; then \
+		echo >&2 "E: ReleaseNotes for $(DEB_UPSTREAM_VERSION) are missing from $(CHANGELOGS)"; \
+		echo >&2 "I: Run 'debian/rules get-changelogs' or add version into $(CHANGELOGS)/skip"; \
+		exit 1; \
+	fi
+
 
 clean::
 	rm -f Cython/Compiler/Lexicon.pickle Cython/*/*.c
@@ -37,3 +71,8 @@ clean::
 # Install directly into package directory (despite multiple packages
 # due to having cython-dbg)
 DEB_DESTDIR = $(CURDIR)/debian/cython
+DEB_INSTALL_CHANGELOGS_cython = $(CHANGELOGS)/ReleaseHistory
+DEB_INSTALL_DOCS_cython = $(CHANGELOGS)/ReleaseNotes*
+# CDBS causes the puke and Yarik have no time to figure it out
+# DEB_INSTALL_DOCS_cython-dbg = --link-doc=cython
+DEB_CLEAN_EXCLUDE = $(CHANGELOGS)

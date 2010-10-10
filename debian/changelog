@@ -2,6 +2,7 @@ cython (0.13-1) experimental; urgency=low
 
   * New upstream release
   * debian/control: added myself to Uploaders
+  * debian/rules: fetch upstream ReleaseNotes to serve a changelog
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 26 Sep 2010 14:28:34 -0400
 
