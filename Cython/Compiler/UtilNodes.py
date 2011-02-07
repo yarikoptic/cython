@@ -8,6 +8,7 @@ import Nodes
 import ExprNodes
 from Nodes import Node
 from ExprNodes import AtomicExprNode
+from PyrexTypes import c_ptr_type
 
 class TempHandle(object):
     # THIS IS DEPRECATED, USE LetRefNode instead
@@ -29,7 +30,7 @@ class TempRefNode(AtomicExprNode):
 
     def analyse_types(self, env):
         assert self.type == self.handle.type
-    
+
     def analyse_target_types(self, env):
         assert self.type == self.handle.type
 
@@ -67,20 +68,20 @@ class CleanupTempRefNode(TempRefNode):
 
 class TempsBlockNode(Node):
     # THIS IS DEPRECATED, USE LetNode instead
-    
+
     """
     Creates a block which allocates temporary variables.
     This is used by transforms to output constructs that need
     to make use of a temporary variable. Simply pass the types
     of the needed temporaries to the constructor.
-    
+
     The variables can be referred to using a TempRefNode
     (which can be constructed by calling get_ref_node).
     """
 
     # temps   [TempHandle]
     # body    StatNode
-    
+
     child_attrs = ["body"]
 
     def generate_execution_code(self, code):
@@ -101,13 +102,13 @@ class TempsBlockNode(Node):
 
     def analyse_declarations(self, env):
         self.body.analyse_declarations(env)
-    
+
     def analyse_expressions(self, env):
         self.body.analyse_expressions(env)
-    
+
     def generate_function_definitions(self, env, code):
         self.body.generate_function_definitions(env, code)
-            
+
     def annotate(self, code):
         self.body.annotate(code)
 
@@ -119,9 +120,10 @@ class ResultRefNode(AtomicExprNode):
     subexprs = []
     lhs_of_first_assignment = False
 
-    def __init__(self, expression=None, pos=None, type=None):
+    def __init__(self, expression=None, pos=None, type=None, may_hold_none=True):
         self.expression = expression
         self.pos = None
+        self.may_hold_none = may_hold_none
         if expression is not None:
             self.pos = expression.pos
             if hasattr(expression, "type"):
@@ -139,6 +141,14 @@ class ResultRefNode(AtomicExprNode):
     def infer_type(self, env):
         if self.expression is not None:
             return self.expression.infer_type(env)
+        if self.type is not None:
+            return self.type
+        assert False, "cannot infer type of ResultRefNode"
+
+    def may_be_none(self):
+        if not self.type.is_pyobject:
+            return False
+        return self.may_hold_none
 
     def _DISABLED_may_be_none(self):
         # not sure if this is safe - the expression may not be the
@@ -165,10 +175,10 @@ class ResultRefNode(AtomicExprNode):
 
     def generate_result_code(self, code):
         pass
-        
+
     def generate_disposal_code(self, code):
         pass
-                
+
     def generate_assignment_code(self, rhs, code):
         if self.type.is_pyobject:
             rhs.make_owned_reference(code)
@@ -180,7 +190,7 @@ class ResultRefNode(AtomicExprNode):
 
     def allocate_temps(self, env):
         pass
-        
+
     def release_temp(self, env):
         pass
 
@@ -196,6 +206,8 @@ class LetNodeMixin:
     def setup_temp_expr(self, code):
         self.temp_expression.generate_evaluation_code(code)
         self.temp_type = self.temp_expression.type
+        if self.temp_type.is_array:
+            self.temp_type = c_ptr_type(self.temp_type.base_type)
         self._result_in_temp = self.temp_expression.result_in_temp()
         if self._result_in_temp:
             self.temp = self.temp_expression.result()
@@ -251,7 +263,7 @@ class EvalWithTempExprNode(ExprNodes.ExprNode, LetNodeMixin):
         self.setup_temp_expr(code)
         self.subexpression.generate_evaluation_code(code)
         self.teardown_temp_expr(code)
- 
+
 LetRefNode = ResultRefNode
 
 class LetNode(Nodes.StatNode, LetNodeMixin):
@@ -277,7 +289,7 @@ class LetNode(Nodes.StatNode, LetNodeMixin):
     def analyse_declarations(self, env):
         self.temp_expression.analyse_declarations(env)
         self.body.analyse_declarations(env)
-    
+
     def analyse_expressions(self, env):
         self.temp_expression.analyse_expressions(env)
         self.body.analyse_expressions(env)
@@ -305,7 +317,7 @@ class TempResultFromStatNode(ExprNodes.ExprNode):
 
     def analyse_declarations(self, env):
         self.body.analyse_declarations(env)
-    
+
     def analyse_types(self, env):
         self.body.analyse_expressions(env)
 

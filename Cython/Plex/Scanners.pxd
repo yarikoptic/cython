@@ -1,11 +1,13 @@
 import cython
 
+from Cython.Plex.Actions cimport Action
+
 cdef class Scanner:
 
     cdef public lexicon
     cdef public stream
     cdef public name
-    cdef public buffer
+    cdef public unicode buffer
     cdef public Py_ssize_t buf_start_pos
     cdef public Py_ssize_t next_pos
     cdef public Py_ssize_t cur_pos
@@ -25,17 +27,17 @@ cdef class Scanner:
     cdef public level
 
     @cython.locals(input_state=long)
-    cpdef next_char(self)
-    @cython.locals(queue=list)
-    cpdef tuple read(self)
-    cpdef tuple scan_a_token(self)
-    cpdef tuple position(self)
+    cdef next_char(self)
+    @cython.locals(action=Action)
+    cdef tuple read(self)
+    cdef tuple scan_a_token(self)
+    cdef tuple position(self)
 
     @cython.locals(cur_pos=long, cur_line=long, cur_line_start=long,
-                   input_state=long, next_pos=long,
+                   input_state=long, next_pos=long, state=dict,
                    buf_start_pos=long, buf_len=long, buf_index=long,
-                   trace=bint, discard=long)
-    cpdef run_machine_inlined(self)
-    
-    cpdef begin(self, state)
-    cpdef produce(self, value, text = *)
+                   trace=bint, discard=long, data=unicode, buffer=unicode)
+    cdef run_machine_inlined(self)
+
+    cdef begin(self, state)
+    cdef produce(self, value, text = *)

@@ -1,23 +1,20 @@
 # Directive defaults to True
 
 """
-Tests doctesthack compiler directive.
+Tests autotestdict compiler directive.
 
-The doctests are actually run as part of this test;
-which makes the test flow a bit untraditional. Both
-module test and individual tests are run; finally,
+Both module test and individual tests are run; finally,
 all_tests_run() is executed which does final validation.
 
 >>> items = list(__test__.items())
 >>> items.sort()
 >>> for key, value in items:
 ...     print('%s ; %s' % (key, value))
-MyCdefClass.cpdef_method (line 78) ; >>> add_log("cpdef class method")
-MyCdefClass.method (line 75) ; >>> add_log("cdef class method")
-MyClass.method (line 65) ; >>> add_log("class method")
-doc_without_test (line 47) ; Some docs
-mycpdeffunc (line 53) ; >>> add_log("cpdef")
-myfunc (line 44) ; >>> add_log("def")
+MyCdefClass.cpdef_method (line 77) ; >>> add_log("cpdef class method")
+MyCdefClass.method (line 74) ; >>> add_log("cdef class method")
+MyClass.method (line 63) ; >>> add_log("class method")
+mycpdeffunc (line 50) ; >>> add_log("cpdef")
+myfunc (line 40) ; >>> add_log("def")
 
 """
 
@@ -25,24 +22,24 @@ log = []
 
 cdef cdeffunc():
     """
-    Please don't include me!
-
     >>> True
     False
     """
+cdeffunc() # make sure it's being used
 
 def all_tests_run():
     log.sort()
-    assert log == [u'cdef class method', u'class method', u'cpdef', u'def'], log
+    assert log == [u'cdef class', u'cdef class method', u'class', u'class method', u'cpdef', u'cpdef class method', u'def'], log
 
 def add_log(s):
     log.append(unicode(s))
-    if len(log) == len(__test__):
+    if len(log) == len(__test__) + 2:
         # Final per-function doctest executed
         all_tests_run()
 
 def myfunc():
     """>>> add_log("def")"""
+    x = lambda a:1 # no docstring here ...
 
 def doc_without_test():
     """Some docs"""
@@ -58,6 +55,7 @@ class MyClass:
     """
     Needs no hack
 
+    >>> add_log("class")
     >>> True
     True
     """
@@ -68,7 +66,8 @@ class MyClass:
 cdef class MyCdefClass:
     """
     Needs no hack
-    
+
+    >>> add_log("cdef class")
     >>> True
     True
     """
@@ -77,6 +76,9 @@ cdef class MyCdefClass:
 
     cpdef cpdef_method(self):
         """>>> add_log("cpdef class method")"""
+
+    cdef cdef_method(self):
+        """>>> add_log("cdef class method")"""
 
     def __cinit__(self):
         """
@@ -129,7 +131,7 @@ cdef class MyCdefClass:
 cdef class MyOtherCdefClass:
     """
     Needs no hack
-    
+
     >>> True
     True
     """
@@ -141,5 +143,3 @@ cdef class MyOtherCdefClass:
         >>> True
         False
         """
-
-cdeffunc()

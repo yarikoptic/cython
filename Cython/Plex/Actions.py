@@ -8,6 +8,9 @@
 
 class Action(object):
 
+  def perform(self, token_stream, text):
+    pass # abstract
+
   def same_as(self, other):
     return self is other
 
@@ -17,8 +20,6 @@ class Return(Action):
   Internal Plex action which causes |value| to
   be returned as the value of the associated token
   """
-
-  value = None
 
   def __init__(self, value):
     self.value = value
@@ -38,8 +39,6 @@ class Call(Action):
   Internal Plex action which causes a function to be called.
   """
 
-  function = None
-
   def __init__(self, function):
     self.function = function
 
@@ -56,11 +55,9 @@ class Call(Action):
 class Begin(Action):
   """
   Begin(state_name) is a Plex action which causes the Scanner to
-  enter the state |state_name|. See the docstring of Plex.Lexicon 
+  enter the state |state_name|. See the docstring of Plex.Lexicon
   for more information.
   """
-
-  state_name = None
 
   def __init__(self, state_name):
     self.state_name = state_name
@@ -78,7 +75,7 @@ class Begin(Action):
 class Ignore(Action):
   """
   IGNORE is a Plex action which causes its associated token
-  to be ignored. See the docstring of Plex.Lexicon  for more 
+  to be ignored. See the docstring of Plex.Lexicon  for more
   information.
   """
   def perform(self, token_stream, text):
@@ -88,12 +85,12 @@ class Ignore(Action):
     return "IGNORE"
 
 IGNORE = Ignore()
-IGNORE.__doc__ = Ignore.__doc__
+#IGNORE.__doc__ = Ignore.__doc__
 
 class Text(Action):
   """
   TEXT is a Plex action which causes the text of a token to
-  be returned as the value of the token. See the docstring of 
+  be returned as the value of the token. See the docstring of
   Plex.Lexicon  for more information.
   """
 
@@ -104,6 +101,6 @@ class Text(Action):
     return "TEXT"
 
 TEXT = Text()
-TEXT.__doc__ = Text.__doc__
+#TEXT.__doc__ = Text.__doc__
 
 

@@ -23,6 +23,39 @@ def test_arithmetic(double complex z, double complex w):
     """
     return +z, -z+0, z+w, z-w, z*w, z/w
 
+def test_pow(double complex z, double complex w, tol=None):
+    """
+    Various implementations produce slightly different results...
+
+    >>> a = complex(3, 1)
+    >>> test_pow(a, 1, 1e-15)
+    True
+    >>> test_pow(a, 2, 1e-15)
+    True
+    >>> test_pow(a, a, 1e-15)
+    True
+    >>> test_pow(complex(0.5, -.25), complex(3, 4), 1e-15)
+    True
+    """
+    if tol is None:
+        return z**w
+    else:
+        return abs(z**w / <object>z ** <object>w - 1) < tol
+
+def test_int_pow(double complex z, int n, tol=None):
+    """
+    >>> [test_int_pow(complex(0, 1), k, 1e-15) for k in range(-4, 5)]
+    [True, True, True, True, True, True, True, True, True]
+    >>> [test_int_pow(complex(0, 2), k, 1e-15) for k in range(-4, 5)]
+    [True, True, True, True, True, True, True, True, True]
+    >>> [test_int_pow(complex(2, 0.5), k, 1e-14) for k in range(0, 10)]
+    [True, True, True, True, True, True, True, True, True, True]
+    """
+    if tol is None:
+        return z**n + <object>0 # add zero to normalize zero sign
+    else:
+        return abs(z**n / <object>z ** <object>n - 1) < tol
+
 @cython.cdivision(False)
 def test_div_by_zero(double complex z):
     """
@@ -128,6 +161,11 @@ def test_conjugate_typedef(cdouble z):
     (2-3j)
     """
     return z.conjugate()
+
+cdef cdouble test_conjugate_nogil(cdouble z) nogil:
+    # Really just a compile test.
+    return z.conjugate()
+test_conjugate_nogil(0) # use it
 
 ## cdef extern from "complex_numbers_T305.h":
 ##     ctypedef double double_really_float "myfloat"

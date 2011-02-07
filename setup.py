@@ -3,15 +3,8 @@ from distutils.sysconfig import get_python_lib
 import os, os.path
 import sys
 
-if 'sdist' in sys.argv and sys.platform != "win32" and sys.version_info >= (2,4):
-    # Record the current revision in .hgrev
-    import subprocess # os.popen is cleaner but deprecated
-    changeset = subprocess.Popen("hg identify --id --rev tip".split(),
-                                 stdout=subprocess.PIPE).stdout.read()
-    rev = changeset.decode('ISO-8859-1').strip()
-    hgrev = open('.hgrev', 'w')
-    hgrev.write(rev)
-    hgrev.close()
+if 'sdist' in sys.argv and sys.platform != "win32":
+    assert os.system("git show-ref -s HEAD > .gitrev") == 0
 
 if sys.platform == "darwin":
     # Don't create resource files on OS X tar.
@@ -66,9 +59,12 @@ else:
         'Cython'          : [ p[7:] for p in pxd_include_patterns ],
         }
 
-# This dict is used for passing extra arguments that are setuptools 
+# This dict is used for passing extra arguments that are setuptools
 # specific to setup
 setuptools_extra_args = {}
+
+# tells whether to include cygdb (the script and the Cython.Debugger package
+include_debugger = sys.version_info[:2] > (2, 5)
 
 if 'setuptools' in sys.modules:
     setuptools_extra_args['zip_safe'] = False
@@ -81,18 +77,37 @@ if 'setuptools' in sys.modules:
 else:
     if os.name == "posix":
         scripts = ["bin/cython"]
+        if include_debugger:
+            scripts.append('bin/cygdb')
     else:
         scripts = ["cython.py"]
+        if include_debugger:
+            scripts.append('cygdb.py')
 
-def compile_cython_modules(profile=False):
+def compile_cython_modules(profile=False, compile_more=False, cython_with_refnanny=False):
     source_root = os.path.abspath(os.path.dirname(__file__))
     compiled_modules = ["Cython.Plex.Scanners",
+                        "Cython.Plex.Actions",
+                        "Cython.Compiler.Lexicon",
                         "Cython.Compiler.Scanning",
                         "Cython.Compiler.Parsing",
                         "Cython.Compiler.Visitor",
-                        "Cython.Runtime.refnanny"]
-    extensions = []
+                        "Cython.Compiler.Code",
+                        "Cython.Runtime.refnanny",]
+    if compile_more:
+        compiled_modules.extend([
+            "Cython.Compiler.ParseTreeTransforms",
+            "Cython.Compiler.Nodes",
+            "Cython.Compiler.ExprNodes",
+            "Cython.Compiler.ModuleNode",
+            "Cython.Compiler.Optimize",
+            ])
 
+    defines = []
+    if cython_with_refnanny:
+        defines.append(('CYTHON_REFNANNY', '1'))
+
+    extensions = []
     if sys.version_info[0] >= 3:
         from Cython.Distutils import build_ext as build_ext_orig
         for module in compiled_modules:
@@ -101,17 +116,33 @@ def compile_cython_modules(profile=False):
                 pyx_source_file = source_file + ".py"
             else:
                 pyx_source_file = source_file + ".pyx"
+            dep_files = []
+            if os.path.exists(source_file + '.pxd'):
+                dep_files.append(source_file + '.pxd')
+            if '.refnanny' in module:
+                defines_for_module = []
+            else:
+                defines_for_module = defines
             extensions.append(
-                Extension(module, sources = [pyx_source_file])
+                Extension(module, sources = [pyx_source_file],
+                          define_macros = defines_for_module,
+                          depends = dep_files)
                 )
 
         class build_ext(build_ext_orig):
+            # we must keep the original modules alive to make sure
+            # their code keeps working when we remove them from
+            # sys.modules
+            dead_modules = []
+
             def build_extensions(self):
                 # add path where 2to3 installed the transformed sources
                 # and make sure Python (re-)imports them from there
                 already_imported = [ module for module in sys.modules
                                      if module == 'Cython' or module.startswith('Cython.') ]
+                keep_alive = self.dead_modules.append
                 for module in already_imported:
+                    keep_alive(sys.modules[module])
                     del sys.modules[module]
                 sys.path.insert(0, os.path.join(source_root, self.build_lib))
 
@@ -147,9 +178,18 @@ def compile_cython_modules(profile=False):
                 else:
                     pyx_source_file = source_file + ".pyx"
                 c_source_file = source_file + ".c"
-                if not os.path.exists(c_source_file) or \
-                   Utils.file_newer_than(pyx_source_file,
-                                         Utils.modification_time(c_source_file)):
+                source_is_newer = False
+                if not os.path.exists(c_source_file):
+                    source_is_newer = True
+                else:
+                    c_last_modified = Utils.modification_time(c_source_file)
+                    if Utils.file_newer_than(pyx_source_file, c_last_modified):
+                        source_is_newer = True
+                    else:
+                        pxd_source_file = source_file + ".pxd"
+                        if os.path.exists(pxd_source_file) and Utils.file_newer_than(pxd_source_file, c_last_modified):
+                            source_is_newer = True
+                if source_is_newer:
                     print("Compiling module %s ..." % module)
                     result = compile(pyx_source_file)
                     c_source_file = result.c_file
@@ -160,8 +200,13 @@ def compile_cython_modules(profile=False):
                         if filename_encoding is None:
                             filename_encoding = sys.getdefaultencoding()
                         c_source_file = c_source_file.encode(filename_encoding)
+                    if '.refnanny' in module:
+                        defines_for_module = []
+                    else:
+                        defines_for_module = defines
                     extensions.append(
-                        Extension(module, sources = [c_source_file])
+                        Extension(module, sources = [c_source_file],
+                                  define_macros = defines_for_module)
                         )
                 else:
                     print("Compilation failed")
@@ -184,13 +229,44 @@ if cython_profile:
     sys.argv.remove('--cython-profile')
 
 try:
+    sys.argv.remove("--cython-compile-all")
+    cython_compile_more = True
+except ValueError:
+    cython_compile_more = False
+
+try:
+    sys.argv.remove("--cython-with-refnanny")
+    cython_with_refnanny = True
+except ValueError:
+    cython_with_refnanny = False
+
+try:
     sys.argv.remove("--no-cython-compile")
 except ValueError:
-    compile_cython_modules(cython_profile)
+    compile_cython_modules(cython_profile, cython_compile_more, cython_with_refnanny)
 
 setup_args.update(setuptools_extra_args)
 
-from Cython.Compiler.Version import version
+from Cython import __version__ as version
+
+packages = [
+    'Cython',
+    'Cython.Build',
+    'Cython.Compiler',
+    'Cython.Runtime',
+    'Cython.Distutils',
+    'Cython.Plex',
+    'Cython.Tests',
+    'Cython.Build.Tests',
+    'Cython.Compiler.Tests',
+]
+
+if include_debugger:
+    packages.append('Cython.Debugger')
+    packages.append('Cython.Debugger.Tests')
+    # it's enough to do this for Py2.5+:
+    setup_args['package_data']['Cython.Debugger.Tests'] = ['codefile', 'cfuncs.c']
+
 
 setup(
   name = 'Cython',
@@ -232,16 +308,7 @@ setup(
   ],
 
   scripts = scripts,
-  packages=[
-    'Cython',
-    'Cython.Compiler',
-    'Cython.Runtime',
-    'Cython.Distutils',
-    'Cython.Plex',
-
-    'Cython.Tests',
-    'Cython.Compiler.Tests',
-    ],
+  packages=packages,
 
   # pyximport
   py_modules = ["pyximport/__init__",

@@ -233,7 +233,7 @@ class CTypedefType(BaseType):
 
     def _create_utility_code(self, template_utility_code,
                              template_function_name):
-        type_name = self.typedef_cname.replace(" ","_")
+        type_name = self.typedef_cname.replace(" ","_").replace("::","__")
         utility_code = template_utility_code.specialize(
             type     = self.typedef_cname,
             TypeName = type_name)
@@ -353,6 +353,10 @@ class PyObjectType(PyrexType):
     def can_coerce_to_pyobject(self, env):
         return True
 
+    def default_coerced_ctype(self):
+        "The default C type that this Python type coerces to, or None."
+        return None
+
     def assignable_from(self, src_type):
         # except for pointers, conversion will be attempted
         return not src_type.is_ptr or src_type.is_string
@@ -373,22 +377,25 @@ class PyObjectType(PyrexType):
             return cname
 
 class BuiltinObjectType(PyObjectType):
+    #  objstruct_cname  string           Name of PyObject struct
 
     is_builtin_type = 1
     has_attributes = 1
     base_type = None
     module_name = '__builtin__'
 
-    alternative_name = None # used for str/bytes duality
+    # fields that let it look like an extension type
+    vtabslot_cname = None
+    vtabstruct_cname = None
+    vtabptr_cname = None
+    typedef_flag = True
+    is_external = True
 
-    def __init__(self, name, cname):
+    def __init__(self, name, cname, objstruct_cname=None):
         self.name = name
-        if name == 'str':
-            self.alternative_name = 'bytes'
-        elif name == 'bytes':
-            self.alternative_name = 'str'
         self.cname = cname
-        self.typeptr_cname = "&" + cname
+        self.typeptr_cname = "(&%s)" % cname
+        self.objstruct_cname = objstruct_cname
                                  
     def set_scope(self, scope):
         self.scope = scope
@@ -400,12 +407,19 @@ class BuiltinObjectType(PyObjectType):
     
     def __repr__(self):
         return "<%s>"% self.cname
-        
+
+    def default_coerced_ctype(self):
+        if self.name == 'bytes':
+            return c_char_ptr_type
+        elif self.name == 'bool':
+            return c_bint_type
+        elif self.name == 'float':
+            return c_double_type
+        return None
+
     def assignable_from(self, src_type):
         if isinstance(src_type, BuiltinObjectType):
-            return src_type.name == self.name or (
-                src_type.name == self.alternative_name and
-                src_type.name is not None)
+            return src_type.name == self.name
         elif src_type.is_extension_type:
             return (src_type.module_name == '__builtin__' and
                     src_type.name == self.name)
@@ -423,16 +437,13 @@ class BuiltinObjectType(PyObjectType):
 
     def type_check_function(self, exact=True):
         type_name = self.name
-        if type_name == 'bool':
-            return 'PyBool_Check'
-
         if type_name == 'str':
             type_check = 'PyString_Check'
         elif type_name == 'frozenset':
             type_check = 'PyFrozenSet_Check'
         else:
             type_check = 'Py%s_Check' % type_name.capitalize()
-        if exact:
+        if exact and type_name not in ('bool', 'slice'):
             type_check += 'Exact'
         return type_check
 
@@ -455,6 +466,11 @@ class BuiltinObjectType(PyObjectType):
             base_code = public_decl("PyObject", dll_linkage)
             entity_code = "*%s" % entity_code
         return self.base_declaration_code(base_code, entity_code)
+
+    def cast_code(self, expr_code, to_object_struct = False):
+        return "((%s*)%s)" % (
+            to_object_struct and self.objstruct_cname or "PyObject", # self.objstruct_cname may be None
+            expr_code)
 
 
 class PyExtensionType(PyObjectType):
@@ -632,6 +648,8 @@ class CNumericType(CType):
     
     is_numeric = 1
     default_value = "0"
+    has_attributes = True
+    scope = None
     
     sign_words = ("unsigned ", "", "signed ")
     
@@ -655,6 +673,23 @@ class CNumericType(CType):
         else:
             base_code = public_decl(type_name, dll_linkage)
         return self.base_declaration_code(base_code, entity_code)
+                    
+    def attributes_known(self):
+        if self.scope is None:
+            import Symtab
+            self.scope = scope = Symtab.CClassScope(
+                    '',
+                    None,
+                    visibility="extern")
+            scope.parent_type = self
+            scope.directives = {}
+            entry = scope.declare_cfunction(
+                    "conjugate",
+                    CFuncType(self, [CFuncTypeArg("self", self, None)], nogil=True),
+                    pos=None,
+                    defining=1,
+                    cname=" ")
+        return True
 
 
 type_conversion_predeclarations = ""
@@ -1072,11 +1107,12 @@ class CComplexType(CNumericType):
                     None,
                     visibility="extern")
             scope.parent_type = self
+            scope.directives = {}
             scope.declare_var("real", self.real_type, None, "real", is_cdef=True)
             scope.declare_var("imag", self.real_type, None, "imag", is_cdef=True)
             entry = scope.declare_cfunction(
                     "conjugate",
-                    CFuncType(self, [CFuncTypeArg("self", self, None)]),
+                    CFuncType(self, [CFuncTypeArg("self", self, None)], nogil=True),
                     pos=None,
                     defining=1,
                     cname="__Pyx_c_conj%s" % self.funcsuffix)
@@ -1095,7 +1131,8 @@ class CComplexType(CNumericType):
                 utility_code.specialize(
                     self, 
                     real_type = self.real_type.declaration_code(''),
-                    m = self.funcsuffix))
+                    m = self.funcsuffix,
+                    is_float = self.real_type.is_float))
         return True
 
     def create_to_py_utility_code(self, env):
@@ -1112,7 +1149,8 @@ class CComplexType(CNumericType):
                 utility_code.specialize(
                     self, 
                     real_type = self.real_type.declaration_code(''),
-                    m = self.funcsuffix))
+                    m = self.funcsuffix,
+                    is_float = self.real_type.is_float))
         self.from_py_function = "__Pyx_PyComplex_As_" + self.specialization_name()
         return True
     
@@ -1271,11 +1309,17 @@ proto="""
   #ifdef __cplusplus
     #define __Pyx_c_is_zero%(m)s(z) ((z)==(%(real_type)s)0)
     #define __Pyx_c_conj%(m)s(z)    (::std::conj(z))
-    /*#define __Pyx_c_abs%(m)s(z)     (::std::abs(z))*/
+    #if %(is_float)s
+        #define __Pyx_c_abs%(m)s(z)     (::std::abs(z))
+        #define __Pyx_c_pow%(m)s(a, b)  (::std::pow(a, b))
+    #endif
   #else
     #define __Pyx_c_is_zero%(m)s(z) ((z)==0)
     #define __Pyx_c_conj%(m)s(z)    (conj%(m)s(z))
-    /*#define __Pyx_c_abs%(m)s(z)     (cabs%(m)s(z))*/
+    #if %(is_float)s
+        #define __Pyx_c_abs%(m)s(z)     (cabs%(m)s(z))
+        #define __Pyx_c_pow%(m)s(a, b)  (cpow%(m)s(a, b))
+    #endif
  #endif
 #else
     static CYTHON_INLINE int __Pyx_c_eq%(m)s(%(type)s, %(type)s);
@@ -1286,7 +1330,10 @@ proto="""
     static CYTHON_INLINE %(type)s __Pyx_c_neg%(m)s(%(type)s);
     static CYTHON_INLINE int __Pyx_c_is_zero%(m)s(%(type)s);
     static CYTHON_INLINE %(type)s __Pyx_c_conj%(m)s(%(type)s);
-    /*static CYTHON_INLINE %(real_type)s __Pyx_c_abs%(m)s(%(type)s);*/
+    #if %(is_float)s
+        static CYTHON_INLINE %(real_type)s __Pyx_c_abs%(m)s(%(type)s);
+        static CYTHON_INLINE %(type)s __Pyx_c_pow%(m)s(%(type)s, %(type)s);
+    #endif
 #endif
 """,
 impl="""
@@ -1335,15 +1382,60 @@ impl="""
         z.imag = -a.imag;
         return z;
     }
-/*
-    static CYTHON_INLINE %(real_type)s __Pyx_c_abs%(m)s(%(type)s z) {
-#if HAVE_HYPOT
-        return hypot%(m)s(z.real, z.imag);
-#else
-        return sqrt%(m)s(z.real*z.real + z.imag*z.imag);
-#endif
-    }
-*/
+    #if %(is_float)s
+        static CYTHON_INLINE %(real_type)s __Pyx_c_abs%(m)s(%(type)s z) {
+          #if !defined(HAVE_HYPOT) || defined(_MSC_VER)
+            return sqrt%(m)s(z.real*z.real + z.imag*z.imag);
+          #else
+            return hypot%(m)s(z.real, z.imag);
+          #endif
+        }
+        static CYTHON_INLINE %(type)s __Pyx_c_pow%(m)s(%(type)s a, %(type)s b) {
+            %(type)s z;
+            %(real_type)s r, lnr, theta, z_r, z_theta;
+            if (b.imag == 0 && b.real == (int)b.real) {
+                if (b.real < 0) {
+                    %(real_type)s denom = a.real * a.real + a.imag * a.imag;
+                    a.real = a.real / denom;
+                    a.imag = -a.imag / denom;
+                    b.real = -b.real;
+                }
+                switch ((int)b.real) {
+                    case 0:
+                        z.real = 1;
+                        z.imag = 0;
+                        return z;
+                    case 1:
+                        return a;
+                    case 2:
+                        z = __Pyx_c_prod%(m)s(a, a);
+                        return __Pyx_c_prod%(m)s(a, a);
+                    case 3:
+                        z = __Pyx_c_prod%(m)s(a, a);
+                        return __Pyx_c_prod%(m)s(z, a);
+                    case 4:
+                        z = __Pyx_c_prod%(m)s(a, a);
+                        return __Pyx_c_prod%(m)s(z, z);
+                }
+            }
+            if (a.imag == 0) {
+                if (a.real == 0) {
+                    return a;
+                }
+                r = a.real;
+                theta = 0;
+            } else {
+                r = __Pyx_c_abs%(m)s(a);
+                theta = atan2%(m)s(a.imag, a.real);
+            }
+            lnr = log%(m)s(r);
+            z_r = exp%(m)s(lnr * b.real - theta * b.imag);
+            z_theta = theta * b.real + lnr * b.imag;
+            z.real = z_r * cos%(m)s(z_theta);
+            z.imag = z_r * sin%(m)s(z_theta);
+            return z;
+        }
+    #endif
 #endif
 """)
 
@@ -2265,7 +2357,7 @@ modifiers_and_name_to_type = {
     (1,  0, "double"): c_double_type,
     (1,  1, "double"): c_longdouble_type,
 
-    (1,  0, "complex"):  c_float_complex_type,
+    (1,  0, "complex"):  c_double_complex_type,  # C: float, Python: double => Python wins
     (1,  0, "floatcomplex"):  c_float_complex_type,
     (1,  0, "doublecomplex"): c_double_complex_type,
     (1,  1, "doublecomplex"): c_longdouble_complex_type,

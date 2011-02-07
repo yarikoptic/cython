@@ -42,20 +42,31 @@ def slice_charptr_for_loop_c():
     print [ chr(c) for c in cstring[1:5] ]
     print [ chr(c) for c in cstring[4:9] ]
 
-## @cython.test_assert_path_exists("//ForFromStatNode",
-##                                 "//ForFromStatNode//IndexNode")
-## @cython.test_fail_if_path_exists("//ForInStatNode")
-## def slice_charptr_for_loop_c_step():
-##     """
-##     >>> slice_charptr_for_loop_c()
-##     ['c', 'b', 'a']
-##     ['b', 'c', 'A', 'B']
-##     ['p', 't', 'q', 'C', 'B']
-##     """
-##     cdef char c
-##     print [ chr(c) for c in cstring[:3:-1] ]
-##     print [ chr(c) for c in cstring[1:5:2] ]
-##     print [ chr(c) for c in cstring[4:9:-1] ]
+@cython.test_assert_path_exists("//ForFromStatNode",
+                                "//ForFromStatNode//IndexNode")
+@cython.test_fail_if_path_exists("//ForInStatNode")
+def slice_charptr_for_loop_c_step():
+    """
+    >>> slice_charptr_for_loop_c_step()
+    Acba ['A', 'c', 'b', 'a']
+    Acba ['A', 'c', 'b', 'a']
+    bA ['b', 'A']
+    acB ['a', 'c', 'B']
+    acB ['a', 'c', 'B']
+     []
+    ptqC ['p', 't', 'q', 'C']
+    pq ['p', 'q']
+    """
+    cdef object ustring = cstring.decode('ASCII')
+    cdef char c
+    print ustring[3::-1],     [ chr(c) for c in cstring[3::-1] ]
+    print ustring[3:None:-1], [ chr(c) for c in cstring[3:None:-1] ]
+    print ustring[1:5:2],     [ chr(c) for c in cstring[1:5:2] ]
+    print ustring[:5:2],      [ chr(c) for c in cstring[:5:2] ]
+    print ustring[None:5:2],  [ chr(c) for c in cstring[None:5:2] ]
+    print ustring[4:9:-1],    [ chr(c) for c in cstring[4:9:-1] ]
+    print ustring[8:4:-1],    [ chr(c) for c in cstring[8:4:-1] ]
+    print ustring[8:4:-2],    [ chr(c) for c in cstring[8:4:-2] ]
 
 @cython.test_assert_path_exists("//ForFromStatNode",
                                 "//ForFromStatNode//IndexNode")
@@ -181,6 +192,20 @@ def slice_doublptr_for_loop_c():
     print [ d for d in cdoubles_ptr[:3] ]
     print [ d for d in cdoubles_ptr[1:5] ]
     print [ d for d in cdoubles_ptr[4:6] ]
+
+## @cython.test_assert_path_exists("//ForFromStatNode",
+##                                 "//ForFromStatNode//IndexNode")
+## @cython.test_fail_if_path_exists("//ForInStatNode")
+## def slice_doublptr_for_loop_c_step():
+##     """
+##     >>> slice_doublptr_for_loop_c_step()
+##     """
+##     cdef double d
+##     print [ d for d in cdoubles_ptr[:3:1] ]
+##     print [ d for d in cdoubles_ptr[5:1:-1] ]
+##     print [ d for d in cdoubles_ptr[:2:-2] ]
+##     print [ d for d in cdoubles_ptr[4:6:2] ]
+##     print [ d for d in cdoubles_ptr[4:6:-2] ]
 
 @cython.test_assert_path_exists("//ForFromStatNode",
                                 "//ForFromStatNode//IndexNode")

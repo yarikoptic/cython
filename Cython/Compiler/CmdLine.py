@@ -2,6 +2,7 @@
 #   Cython - Command Line Parsing
 #
 
+import os
 import sys
 import Options
 
@@ -9,40 +10,39 @@ usage = """\
 Cython (http://cython.org) is a compiler for code written in the
 Cython language.  Cython is based on Pyrex by Greg Ewing.
 
-Usage: cython [options] sourcefile.pyx ...
+Usage: cython [options] sourcefile.{pyx,py} ...
 
 Options:
   -V, --version                  Display version number of cython compiler
   -l, --create-listing           Write error messages to a listing file
   -I, --include-dir <directory>  Search for include files in named directory
-                                 (multiply include directories are allowed).
+                                 (multiple include directories are allowed).
   -o, --output-file <filename>   Specify name of generated C file
-  -t, --timestamps               Only compile newer source files (implied with -r)
+  -t, --timestamps               Only compile newer source files
   -f, --force                    Compile all source files (overrides implied -t)
   -q, --quiet                    Don't print module names in recursive mode
   -v, --verbose                  Be verbose, print file names on multiple compilation
   -p, --embed-positions          If specified, the positions in Cython files of each
                                  function definition is embedded in its docstring.
-  -z, --pre-import <module>      If specified, assume undeclared names in this 
-                                 module. Emulates the behavior of putting 
-                                 "from <module> import *" at the top of the file. 
-  --cleanup <level>              Release interned objects on python exit, for memory debugging. 
-                                 Level indicates aggressiveness, default 0 releases nothing. 
-  -w, --working <directory>      Sets the working directory for Cython (the directory modules 
+  --cleanup <level>              Release interned objects on python exit, for memory debugging.
+                                 Level indicates aggressiveness, default 0 releases nothing.
+  -w, --working <directory>      Sets the working directory for Cython (the directory modules
                                  are searched from)
+  --gdb                          Output debug information for cygdb
 
-  -D, --no-docstrings            Remove docstrings.
+  -D, --no-docstrings            Strip docstrings from the compiled module.
   -a, --annotate                 Produce a colorized HTML version of the source.
   --line-directives              Produce #line directives pointing to the .pyx source
-  --cplus                        Output a c++ rather than c file.
-  --embed                        Embed the Python interpreter in a main() method.
+  --cplus                        Output a C++ rather than C file.
+  --embed                        Generate a main() function that embeds the Python interpreter.
   -2                             Compile based on Python-2 syntax and code semantics.
   -3                             Compile based on Python-3 syntax and code semantics.
+  --fast-fail                    Abort the compilation on the first error
   -X, --directive <name>=<value>[,<name=value,...] Overrides a compiler directive
 """
 
 # The following is broken http://trac.cython.org/cython_trac/ticket/379
-#  -r, --recursive                Recursively find and compile dependencies
+#  -r, --recursive                Recursively find and compile dependencies (implies -t)
 
 
 #The following experimental options are supported only on MacOSX:
@@ -65,7 +65,7 @@ def parse_command_line(args):
             return args.pop(0)
         else:
             bad_usage()
-    
+
     def get_param(option):
         tail = option[2:]
         if tail:
@@ -116,10 +116,19 @@ def parse_command_line(args):
                 Options.convert_range = True
             elif option == "--line-directives":
                 options.emit_linenums = True
+            elif option == "--no-c-in-traceback":
+                options.c_line_in_traceback = False
+            elif option == "--gdb":
+                options.gdb_debug = True
+                options.output_dir = os.curdir
             elif option == '-2':
                 options.language_level = 2
             elif option == '-3':
                 options.language_level = 3
+            elif option == "--fast-fail":
+                Options.fast_fail = True
+            elif option == "--disable-function-redefinition":
+                Options.disable_function_redefinition = True
             elif option in ("-X", "--directive"):
                 try:
                     options.compiler_directives = Options.parse_directive_list(
@@ -128,9 +137,20 @@ def parse_command_line(args):
                 except ValueError, e:
                     sys.stderr.write("Error in compiler directive: %s\n" % e.args[0])
                     sys.exit(1)
+            elif option.startswith('--debug'):
+                option = option[2:].replace('-', '_')
+                import DebugFlags
+                if option in dir(DebugFlags):
+                    setattr(DebugFlags, option, True)
+                else:
+                    sys.stderr.write("Unknown debug flag: %s\n" % option)
+                    bad_usage()
+            elif option in ('-h', '--help'):
+                sys.stdout.write(usage)
+                sys.exit(0)
             else:
                 sys.stderr.write("Unknown compiler flag: %s\n" % option)
-                bad_usage()
+                sys.exit(1)
         else:
             arg = pop_arg()
             if arg.endswith(".pyx"):

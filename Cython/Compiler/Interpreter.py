@@ -14,7 +14,7 @@ from Errors import CompileError
 class EmptyScope(object):
     def lookup(self, name):
         return None
-    
+
 empty_scope = EmptyScope()
 
 def interpret_compiletime_options(optlist, optdict, type_env=None, type_args=()):
@@ -37,12 +37,15 @@ def interpret_compiletime_options(optlist, optdict, type_env=None, type_args=())
     def interpret(node, ix):
         if ix in type_args:
             if type_env:
-                return (node.analyse_as_type(type_env), node.pos)
+                type = node.analyse_as_type(type_env)
+                if not type:
+                    raise CompileError(node.pos, "Invalid type.")
+                return (type, node.pos)
             else:
                 raise CompileError(node.pos, "Type not allowed here.")
         else:
             return (node.compile_time_value(empty_scope), node.pos)
-     
+
     if optlist:
         optlist = [interpret(x, ix) for ix, x in enumerate(optlist)]
     if optdict:

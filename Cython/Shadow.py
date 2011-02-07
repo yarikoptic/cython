@@ -1,10 +1,26 @@
+# cython.* namespace for pure mode.
+
 compiled = False
 
 def empty_decorator(x):
     return x
 
+# Function decorators
+
 def locals(**arg_types):
     return empty_decorator
+
+def inline(f, *args, **kwds):
+  if isinstance(f, basestring):
+    from Cython.Build.Inline import cython_inline
+    return cython_inline(f, *args, **kwds)
+  else:
+    assert len(args) == len(kwds) == 0
+    return f
+
+def compile(f):
+    from Cython.Build.Inline import RuntimeCompiledFunction
+    return RuntimeCompiledFunction(f)
 
 # Special functions
 
@@ -33,10 +49,10 @@ def sizeof(arg):
 
 def typeof(arg):
     return type(arg)
-    
+
 def address(arg):
     return pointer(type(arg))([arg])
-    
+
 def declare(type=None, value=None, **kwds):
     if type is not None and hasattr(type, '__call__'):
         if value:
@@ -45,6 +61,17 @@ def declare(type=None, value=None, **kwds):
             return type()
     else:
         return value
+
+class _nogil(object):
+    """Support for 'with nogil' statement
+    """
+    def __enter__(self):
+        pass
+    def __exit__(self, exc_class, exc, tb):
+        return exc_class is None
+
+nogil = _nogil()
+del _nogil
 
 # Emulated types
 
@@ -70,35 +97,35 @@ class PointerType(CythonType):
             self._items = []
         else:
             raise ValueError
-            
+
     def __getitem__(self, ix):
         if ix < 0:
             raise IndexError("negative indexing not allowed in C")
         return self._items[ix]
-        
+
     def __setitem__(self, ix, value):
         if ix < 0:
             raise IndexError("negative indexing not allowed in C")
         self._items[ix] = cast(self._basetype, value)
-        
+
 class ArrayType(PointerType):
-    
+
     def __init__(self):
         self._items = [None] * self._n
 
 
 class StructType(CythonType):
-    
+
     def __init__(self, **data):
         for key, value in data.iteritems():
             setattr(self, key, value)
-            
+
     def __setattr__(self, key, value):
         if key in self._members:
             self.__dict__[key] = cast(self._members[key], value)
         else:
             raise AttributeError("Struct has no member '%s'" % key)
-    
+
 
 class UnionType(CythonType):
 
@@ -107,7 +134,7 @@ class UnionType(CythonType):
             raise AttributeError("Union can only store one field at a time.")
         for key, value in data.iteritems():
             setattr(self, key, value)
-            
+
     def __setattr__(self, key, value):
         if key in '__dict__':
             CythonType.__setattr__(self, key, value)
@@ -145,12 +172,12 @@ class typedef(CythonType):
 
     def __init__(self, type):
         self._basetype = type
-    
+
     def __call__(self, value=None):
         if value is not None:
             value = cast(self._basetype, value)
         return value
-        
+
 
 
 py_int = int
@@ -160,6 +187,7 @@ except NameError: # Py3
     py_long = int
 py_float = float
 py_complex = complex
+
 
 try:
     # Python 3
@@ -186,7 +214,7 @@ for name in int_types:
     if name != 'Py_UNICODE' and not name.endswith('size_t'):
         gs['u'+name] = typedef(py_int)
         gs['s'+name] = typedef(py_int)
-    
+
 for name in float_types:
     gs[name] = typedef(py_float)
 

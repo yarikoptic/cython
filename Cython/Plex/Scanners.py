@@ -8,10 +8,12 @@
 #=======================================================================
 
 import cython
-cython.declare(BOL=object, EOL=object, EOF=object)
+cython.declare(BOL=object, EOL=object, EOF=object, NOT_FOUND=object)
 
 import Errors
 from Regexps import BOL, EOL, EOF
+
+NOT_FOUND = object()
 
 class Scanner(object):
   """
@@ -35,10 +37,10 @@ class Scanner(object):
     position() --> (name, line, col)
       Returns the position of the last token read using the
       read() method.
-    
+
     begin(state_name)
       Causes scanner to change state.
-    
+
     produce(value [, text])
       Causes return of a token value to the caller of the
       Scanner.
@@ -88,7 +90,7 @@ class Scanner(object):
     self.start_col = 0
     self.text = None
     self.state_name = None
-    
+
     self.lexicon = lexicon
     self.stream = stream
     self.name = name
@@ -163,7 +165,8 @@ class Scanner(object):
     buffer = self.buffer
     buf_start_pos = self.buf_start_pos
     buf_len = len(buffer)
-    backup_state = None
+    b_action, b_cur_pos, b_cur_line, b_cur_line_start, b_cur_char, b_input_state, b_next_pos = \
+              None, 0, 0, 0, u'', 0, 0
     trace = self.trace
     while 1:
       if trace: #TRACE#
@@ -173,13 +176,13 @@ class Scanner(object):
       #action = state.action #@slow
       action = state['action'] #@fast
       if action is not None:
-        backup_state = (
-          action, cur_pos, cur_line, cur_line_start, cur_char, input_state, next_pos)
+        b_action, b_cur_pos, b_cur_line, b_cur_line_start, b_cur_char, b_input_state, b_next_pos = \
+                  action, cur_pos, cur_line, cur_line_start, cur_char, input_state, next_pos
       # End inlined self.save_for_backup()
       c = cur_char
       #new_state = state.new_state(c) #@slow
-      new_state = state.get(c, -1) #@fast
-      if new_state == -1: #@fast
+      new_state = state.get(c, NOT_FOUND) #@fast
+      if new_state is NOT_FOUND: #@fast
         new_state = c and state.get('else') #@fast
       if new_state:
         if trace: #TRACE#
@@ -234,9 +237,11 @@ class Scanner(object):
         if trace: #TRACE#
           print("blocked")  #TRACE#
         # Begin inlined: action = self.back_up()
-        if backup_state is not None:
-          (action, cur_pos, cur_line, cur_line_start, 
-            cur_char, input_state, next_pos) = backup_state
+        if b_action is not None:
+          (action, cur_pos, cur_line, cur_line_start,
+           cur_char, input_state, next_pos) = \
+                   (b_action, b_cur_pos, b_cur_line, b_cur_line_start,
+                    b_cur_char, b_input_state, b_next_pos)
         else:
           action = None
         break # while 1

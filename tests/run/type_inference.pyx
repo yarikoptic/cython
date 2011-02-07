@@ -25,7 +25,7 @@ def simple():
     xptrptr = &xptr
     assert typeof(xptrptr) == "double **", typeof(xptrptr)
     b = b"abc"
-    assert typeof(b) == "char *", typeof(b)
+    assert typeof(b) == "bytes object", typeof(b)
     s = "abc"
     assert typeof(s) == "str object", typeof(s)
     u = u"xyz"
@@ -57,34 +57,52 @@ def slicing():
     >>> slicing()
     """
     b = b"abc"
-    assert typeof(b) == "char *", typeof(b)
+    assert typeof(b) == "bytes object", typeof(b)
     b1 = b[1:2]
     assert typeof(b1) == "bytes object", typeof(b1)
+    b2 = b[1:2:2]
+    assert typeof(b2) == "bytes object", typeof(b2)
     u = u"xyz"
     assert typeof(u) == "unicode object", typeof(u)
     u1 = u[1:2]
     assert typeof(u1) == "unicode object", typeof(u1)
+    u2 = u[1:2:2]
+    assert typeof(u2) == "unicode object", typeof(u2)
+    s = "xyz"
+    assert typeof(s) == "str object", typeof(s)
+    s1 = s[1:2]
+    assert typeof(s1) == "str object", typeof(s1)
+    s2 = s[1:2:2]
+    assert typeof(s2) == "str object", typeof(s2)
     L = [1,2,3]
     assert typeof(L) == "list object", typeof(L)
     L1 = L[1:2]
     assert typeof(L1) == "list object", typeof(L1)
+    L2 = L[1:2:2]
+    assert typeof(L2) == "list object", typeof(L2)
     t = (4,5,6)
     assert typeof(t) == "tuple object", typeof(t)
     t1 = t[1:2]
     assert typeof(t1) == "tuple object", typeof(t1)
+    t2 = t[1:2:2]
+    assert typeof(t2) == "tuple object", typeof(t2)
 
 def indexing():
     """
     >>> indexing()
     """
     b = b"abc"
-    assert typeof(b) == "char *", typeof(b)
+    assert typeof(b) == "bytes object", typeof(b)
     b1 = b[1]
-    assert typeof(b1) == "char", typeof(b1)  # FIXME: bytes object ??
+    assert typeof(b1) == "Python object", typeof(b1)
     u = u"xyz"
     assert typeof(u) == "unicode object", typeof(u)
     u1 = u[1]
     assert typeof(u1) == "Py_UNICODE", typeof(u1)
+    s = "xyz"
+    assert typeof(s) == "str object", typeof(s)
+    s1 = s[1]
+    assert typeof(s1) == "Python object", typeof(s1)
     L = [1,2,3]
     assert typeof(L) == "list object", typeof(L)
     L1 = L[1]
@@ -143,7 +161,7 @@ def unary_operators():
     assert typeof(c) == "Python object", typeof(c)
     d = -int(5)
     assert typeof(d) == "Python object", typeof(d)
-    
+
 
 def builtin_type_operations():
     """
@@ -180,7 +198,29 @@ def builtin_type_operations():
     assert typeof(T1) == "tuple object", typeof(T1)
     T2 = () * 2
     assert typeof(T2) == "tuple object", typeof(T2)
-    
+
+def builtin_type_methods():
+    """
+    >>> builtin_type_methods()
+    """
+    l = []
+    assert typeof(l) == 'list object', typeof(l)
+    append = l.append
+    assert typeof(append) == 'Python object', typeof(append)
+    append(1)
+    assert l == [1], str(l)
+
+cdef int cfunc(int x):
+    return x+1
+
+def c_functions():
+    """
+    >>> c_functions()
+    """
+    f = cfunc
+    assert typeof(f) == 'int (*)(int)', typeof(f)
+    assert 2 == f(1)
+
 def cascade():
     """
     >>> cascade()
@@ -263,7 +303,7 @@ def loop_over_bytes():
 def loop_over_str():
     """
     >>> print( loop_over_str() )
-    str object
+    Python object
     """
     cdef str string = 'abcdefg'
     for c in string:
@@ -332,8 +372,7 @@ cdef object some_float_value():
 
 
 @cython.test_fail_if_path_exists('//NameNode[@type.is_pyobject = True]')
-@cython.test_assert_path_exists('//InPlaceAssignmentNode/NameNode',
-                                '//NameNode[@type.is_pyobject]',
+@cython.test_assert_path_exists('//NameNode[@type.is_pyobject]',
                                 '//NameNode[@type.is_pyobject = False]')
 @infer_types(None)
 def double_loop():
@@ -365,7 +404,7 @@ def safe_only():
     assert typeof(d) == "long", typeof(d)
 
     # we special-case inference to type str, see
-    # trac #553 
+    # trac #553
     s = "abc"
     assert typeof(s) == "Python object", typeof(s)
     cdef str t = "def"
@@ -384,6 +423,15 @@ def safe_only():
     for j in range(10):
         res = -j
     assert typeof(j) == "Python object", typeof(j)
+
+@infer_types(None)
+def safe_c_functions():
+    """
+    >>> safe_c_functions()
+    """
+    f = cfunc
+    assert typeof(f) == 'int (*)(int)', typeof(f)
+    assert 2 == f(1)
 
 @infer_types(None)
 def args_tuple_keywords(*args, **kwargs):
@@ -462,3 +510,10 @@ def large_literals():
     c, d = 10, 100000000000000000000000000000000
     assert typeof(c) == "long", typeof(c)
     assert typeof(d) == "Python object", typeof(d)
+
+
+# Regression test for trac #638.
+
+def bar(foo):
+    qux = foo
+    quux = foo[qux.baz]

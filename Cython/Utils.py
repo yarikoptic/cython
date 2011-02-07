@@ -11,8 +11,8 @@ def replace_suffix(path, newsuf):
 
 def open_new_file(path):
     if os.path.exists(path):
-        # Make sure to create a new file here so we can 
-        # safely hard link the output files. 
+        # Make sure to create a new file here so we can
+        # safely hard link the output files.
         os.unlink(path)
 
     # we use the ISO-8859-1 encoding here because we only write pure
@@ -106,7 +106,7 @@ normalise_newlines = re.compile(u'\r\n?|\n').sub
 class NormalisedNewlineStream(object):
   """The codecs module doesn't provide universal newline support.
   This class is used as a stream wrapper that provides this
-  functionality.  The new 'io' in Py2.6+/3.1+ supports this out of the
+  functionality.  The new 'io' in Py2.6+/3.x supports this out of the
   box.
   """
   def __init__(self, stream):
@@ -115,7 +115,7 @@ class NormalisedNewlineStream(object):
     self.close = stream.close
     self.encoding = getattr(stream, 'encoding', 'UTF-8')
 
-  def read(self, count):
+  def read(self, count=-1):
     data = self._read(count)
     if u'\r' not in data:
       return data
@@ -126,10 +126,10 @@ class NormalisedNewlineStream(object):
 
   def readlines(self):
     content = []
-    data = self._read(0x1000)
+    data = self.read(0x1000)
     while data:
         content.append(data)
-        data = self._read(0x1000)
+        data = self.read(0x1000)
     return u''.join(content).split(u'\n')
 
 io = None

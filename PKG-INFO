@@ -1,6 +1,6 @@
 Metadata-Version: 1.0
 Name: Cython
-Version: 0.13
+Version: 0.14.1
 Summary: The Cython compiler for writing C extensions for the Python language.
 Home-page: http://www.cython.org
 Author: Greg Ewing, Robert Bradshaw, Stefan Behnel, Dag Seljebotn, et al.
