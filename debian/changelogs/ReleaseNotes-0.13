@@ -1,4 +1,4 @@
-Fetched from http://wiki.cython.org/ReleaseNotes-0.13 on Wed Sep 29 11:06:57 EDT 2010
+Fetched from http://wiki.cython.org/ReleaseNotes-0.13 on Sun Feb 13 09:43:03 EST 2011
 
 = Cython 0.13 =
  * Release date: August 25, 2010
@@ -56,6 +56,8 @@ This release sets another milestone on the path towards Python compatibility and
  
 
  * `bool` is no longer a valid type name by default. The problem is that it's not clear whether `bool` should refer to the Python type or the C++ type, and expecting one and finding the other has already led to several hard-to-find bugs. Both types are available for importing: you can use `from cpython cimport bool` for the Python `bool` type, and `from libcpp cimport bool` for the C++ type. `bool` is still a valid object by default, so one can still write `bool(x)`. 
+
+ * __getsegcount__ is now correctly typed to take a Py_size_t* rather than an int*. 
 
 == Contributors ==
 
