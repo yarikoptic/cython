@@ -4,6 +4,7 @@ cython (0.14.1-1) unstable; urgency=low
   * Fresh upstream release
   * debian/control: added python-dev into Suggests (Closes: #545809)
   * Standards-Version bumped to 3.9.1 (no change needed)
+  * Use help2man to generate a reasonable manpage (Closes: #607098)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 13 Feb 2011 09:41:12 -0500
 

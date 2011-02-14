@@ -14,8 +14,8 @@ CHANGELOGS=debian/changelogs
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
-install/cython:: assure-changelogs
-	dh_installman debian/cython.1
+install/cython:: assure-changelogs build/cython.1
+	dh_installman build/cython.1
 
 
 #
@@ -35,6 +35,16 @@ install/cython-dbg ::
 binary-predeb/cython-dbg::
 	mkdir -p debian/cython-dbg/usr/share/doc
 	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
+
+
+build/cython.1: build
+	: # Generate a manpage using help2man
+	PYTHONPATH="$(shell /bin/ls -d $(CURDIR)/build/lib.*-$(cdbs_python_current_version) 2>&1)" \
+	  help2man --no-info --no-discard-stderr \
+		-n "compile Cython code (.pyx) into C to build a Python extension" \
+		bin/cython >| build/cython.1
+	: # Verify that manpage generated nicely -- no Errors reported
+	grep -q 'ImportError:' build/cython.1 && exit 1 || :
 
 # To fetch and update upstream Changelogs
 # Notes:
