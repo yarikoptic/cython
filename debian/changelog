@@ -1,3 +1,11 @@
+cython (0.14.1-1) unstable; urgency=low
+
+  * Reincarnating uploads to unstable
+  * Fresh upstream release
+  * debian/control: added python-dev into Suggests (Closes: #545809)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 13 Feb 2011 09:41:12 -0500
+
 cython (0.13-1) experimental; urgency=low
 
   * New upstream release
