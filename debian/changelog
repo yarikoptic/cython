@@ -3,6 +3,7 @@ cython (0.14.1-1) unstable; urgency=low
   * Reincarnating uploads to unstable
   * Fresh upstream release
   * debian/control: added python-dev into Suggests (Closes: #545809)
+  * Standards-Version bumped to 3.9.1 (no change needed)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 13 Feb 2011 09:41:12 -0500
 
