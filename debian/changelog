@@ -1,3 +1,9 @@
+cython (0.14.1-3) unstable; urgency=low
+
+  * Remove python-profiler from Build-Depends: it is non-free
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Fri, 18 Feb 2011 09:09:13 -0500
+
 cython (0.14.1-2) unstable; urgency=low
 
   * Run unittests against default Python version during build
