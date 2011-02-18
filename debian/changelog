@@ -1,3 +1,9 @@
+cython (0.14.1-2) unstable; urgency=low
+
+  * Run unittests against default Python version during build
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 15 Feb 2011 13:35:52 -0500
+
 cython (0.14.1-1) unstable; urgency=low
 
   * Reincarnating uploads to unstable

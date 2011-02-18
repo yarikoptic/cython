@@ -17,12 +17,21 @@ include /usr/share/cdbs/1/class/python-distutils.mk
 install/cython:: assure-changelogs build/cython.1
 	dh_installman build/cython.1
 
+#
+# Testing
+#
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+install/cython::
+	: # Run tests battery against current default version of Python
+	PYTHONPATH=$(shell /bin/ls -d $(CURDIR)/build/lib.*$(cdbs_python_current_version)) \
+		python runtests.py --no-refnanny -v -v --work-dir=build/work-dir
+endif
 
 #
 # Debugging version -dbg
 #
 # Re-build using python-dbg
-install/cython-dbg ::
+install/cython-dbg::
 	for i in $(cdbs_python_build_versions); do \
 	  python$$i-dbg ./setup.py install $(DEB_PYTHON_INSTALL_ARGS_ALL) \
 		 --root $(CURDIR)/debian/cython-dbg; \
@@ -37,6 +46,9 @@ binary-predeb/cython-dbg::
 	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
 
 
+#
+# Custom rules used above
+#
 build/cython.1: build
 	: # Generate a manpage using help2man
 	PYTHONPATH="$(shell /bin/ls -d $(CURDIR)/build/lib.*-$(cdbs_python_current_version) 2>&1)" \
