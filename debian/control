@@ -3,7 +3,7 @@ Section: python
 Priority: optional
 Maintainer: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Uploaders: Ondrej Certik <ondrej@certik.cz>, Yaroslav Halchenko <debian@onerussian.com>
-Build-Depends: cdbs (>= 0.4.49), debhelper (>= 5.0.38), python (>= 2.4.4-6), python-all-dev (>= 2.4.4-6), python-support (>= 0.7.5), python-all-dbg, help2man (>= 1.37.1~)
+Build-Depends: cdbs (>= 0.4.49), debhelper (>= 5.0.38), python (>= 2.4.4-6), python-all-dev (>= 2.4.4-6), python-support (>= 0.7.5), python-all-dbg, help2man (>= 1.37.1~), python-numpy, python-profiler
 Standards-Version: 3.9.1
 Homepage: http://cython.org/
 Vcs-Svn: svn://svn.debian.org/svn/python-apps/packages/cython/trunk
