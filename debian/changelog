@@ -1,6 +1,8 @@
 cython (0.14.1-2) unstable; urgency=low
 
   * Run unittests against default Python version during build
+    - Adopted 0001-fix-makefile-for-embed-testcase.patch from upstream
+      for embedded test to perform correctly
   * Added numpy and profiler into Build-Depends to facilitate all tests above
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 15 Feb 2011 13:35:52 -0500
