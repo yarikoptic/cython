@@ -1,2 +1,3 @@
 0001-fix-makefile-for-embed-testcase.patch
 0001-fix-inline-textcase-to-not-use-default-HOME-.cython-.patch
+0001-fix-testcases-assuming-char-is-signed-thanks-to-Yaro.patch
