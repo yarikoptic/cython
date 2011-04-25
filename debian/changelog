@@ -1,3 +1,10 @@
+cython (0.14.1-5) unstable; urgency=low
+
+  * Cherry-picked from upstream:
+    - 0001-additional-fix-and-test-for-ticket-650.patch (Closes: #620859)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 06 Apr 2011 11:07:21 -0400
+
 cython (0.14.1-4) unstable; urgency=low
 
   * Cherry-picked from upstream:
