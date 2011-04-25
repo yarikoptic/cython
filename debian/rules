@@ -45,6 +45,9 @@ binary-predeb/cython-dbg::
 	mkdir -p debian/cython-dbg/usr/share/doc
 	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
 
+# Fix shebang:
+binary-fixup/cython::
+	sed -i -e '1 s,#!.*python.*,#! /usr/bin/python,' debian/cython/usr/bin/*
 
 #
 # Custom rules used above
