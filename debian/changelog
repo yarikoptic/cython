@@ -2,6 +2,10 @@ cython (0.14.1-5) unstable; urgency=low
 
   * Cherry-picked from upstream:
     - 0001-additional-fix-and-test-for-ticket-650.patch (Closes: #620859)
+    - 0001-Python-3-fix-NumPy-support.patch to address some of the numpy 1.5
+      compatibility issues
+  * Temporarily skipped 2 doctests triggered by numpy 1.5 incompatibility
+    which is on upstream's TODO: patch deb_tempdisable_numpy_doctests
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 06 Apr 2011 11:07:21 -0400
 
