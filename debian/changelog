@@ -1,3 +1,10 @@
+cython (0.14.1-7) UNRELEASED; urgency=low
+
+  * Fix shebang before dh_pysupport is called, to remove unnecessary
+    Dependencies.
+
+ -- Stefano Rivera <stefanor@debian.org>  Thu, 02 Jun 2011 16:59:09 +0200
+
 cython (0.14.1-6) unstable; urgency=low
 
   * Team upload.

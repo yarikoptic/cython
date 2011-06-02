@@ -46,7 +46,7 @@ binary-predeb/cython-dbg::
 	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
 
 # Fix shebang:
-binary-fixup/cython::
+binary-install/cython::
 	sed -i -e '1 s,#!.*python.*,#! /usr/bin/python,' debian/cython/usr/bin/*
 
 #
