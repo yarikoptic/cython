@@ -1,8 +1,14 @@
-Fetched from http://wiki.cython.org/ReleaseHistory on Wed Sep 29 11:06:57 EDT 2010
+Fetched from http://wiki.cython.org/ReleaseHistory on Wed Aug 10 16:25:01 EDT 2011
 
 There seems to be no list of releases available on the web. These are collected from the mailing list. It is not complete, but is probably already useful so that people can see if it worth upgrading to the latest version. The current release is always linked to from the main site, old releases can be found at http://cython.org/release/.
 
- * ( [[ReleaseNotes-0.13]] )
+ * [[ReleaseNotes-0.15]]
+
+ * [[ReleaseNotes-0.14.1]]
+
+ * [[ReleaseNotes-0.14]]
+
+ * [[ReleaseNotes-0.13]]
 
  * [[ReleaseNotes-0.12.1]]
 
