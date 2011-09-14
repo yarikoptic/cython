@@ -1,3 +1,18 @@
+cython (0.15-1) UNRELEASED; urgency=low
+
+  * New upstream version (Closes: #637388)
+  * Dropped patches, have been incorporated upstream:
+    0001-fix-makefile-for-embed-testcase.patch
+    0001-fix-inline-textcase-to-not-use-default-HOME-.cython-.patch
+    0001-fix-testcases-assuming-char-is-signed-thanks-to-Yaro.patch
+    0001-additional-fix-and-test-for-ticket-650.patch
+    0001-Python-3-fix-NumPy-support.patch
+  * cython --help no longer mentions -r option (Closes: 607097)
+  * Compiles cleanly with Python 2.7 (Closes: 627773)
+  * Fixed compile time division (Closes: #641128)
+
+ -- Nikolaus Rath <Nikolaus@rath.org>  Wed, 14 Sep 2011 18:36:37 -0400
+
 cython (0.14.1-7) UNRELEASED; urgency=low
 
   * Fix shebang before dh_pysupport is called, to remove unnecessary
