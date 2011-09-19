@@ -2,13 +2,31 @@
 
 compiled = False
 
-def empty_decorator(x):
-    return x
+_Unspecified = object()
 
 # Function decorators
 
+def _empty_decorator(x):
+    return x
+
 def locals(**arg_types):
-    return empty_decorator
+    return _empty_decorator
+
+def test_assert_path_exists(path):
+    return _empty_decorator
+
+def test_fail_if_path_exists(path):
+    return _empty_decorator
+
+class _EmptyDecoratorAndManager(object):
+    def __call__(self, x):
+        return x
+    def __enter__(self):
+        pass
+    def __exit__(self, exc_type, exc_value, traceback):
+        pass
+
+cclass = ccall = cfunc = _EmptyDecoratorAndManager()
 
 def inline(f, *args, **kwds):
   if isinstance(f, basestring):
@@ -38,11 +56,11 @@ def cmod(a, b):
 
 # Emulated language constructs
 
-def cast(type, arg):
+def cast(type, *args):
     if hasattr(type, '__call__'):
-        return type(arg)
+        return type(*args)
     else:
-        return arg
+        return args[0]
 
 def sizeof(arg):
     return 1
@@ -53,9 +71,9 @@ def typeof(arg):
 def address(arg):
     return pointer(type(arg))([arg])
 
-def declare(type=None, value=None, **kwds):
+def declare(type=None, value=_Unspecified, **kwds):
     if type is not None and hasattr(type, '__call__'):
-        if value:
+        if value is not _Unspecified:
             return type(value)
         else:
             return type()
@@ -71,29 +89,33 @@ class _nogil(object):
         return exc_class is None
 
 nogil = _nogil()
+gil = _nogil()
 del _nogil
 
 # Emulated types
 
-class CythonType(object):
+class CythonMetaType(type):
+
+    def __getitem__(type, ix):
+        return array(type, ix)
+
+CythonTypeObject = CythonMetaType('CythonTypeObject', (object,), {})
+
+class CythonType(CythonTypeObject):
 
     def _pointer(self, n=1):
         for i in range(n):
             self = pointer(self)
         return self
 
-    def __getitem__(self, ix):
-        return array(self, ix)
-
-
 class PointerType(CythonType):
 
     def __init__(self, value=None):
-        if isinstance(value, ArrayType):
+        if isinstance(value, (ArrayType, PointerType)):
             self._items = [cast(self._basetype, a) for a in value._items]
         elif isinstance(value, list):
             self._items = [cast(self._basetype, a) for a in value]
-        elif value is None:
+        elif value is None or value is 0:
             self._items = []
         else:
             raise ValueError
@@ -108,6 +130,14 @@ class PointerType(CythonType):
             raise IndexError("negative indexing not allowed in C")
         self._items[ix] = cast(self._basetype, value)
 
+    def __eq__(self, value):
+        if value is None and not self._items:
+            return True
+        elif type(self) != type(value):
+            return False
+        else:
+            return not self._items and not value._items
+
 class ArrayType(PointerType):
 
     def __init__(self):
@@ -116,9 +146,18 @@ class ArrayType(PointerType):
 
 class StructType(CythonType):
 
-    def __init__(self, **data):
-        for key, value in data.iteritems():
-            setattr(self, key, value)
+    def __init__(self, cast_from=_Unspecified, **data):
+        if cast_from is not _Unspecified:
+            # do cast
+            if len(data) > 0:
+                raise ValueError('Cannot accept keyword arguments when casting.')
+            if type(cast_from) is not type(self):
+                raise ValueError('Cannot cast from %s'%cast_from)
+            for key, value in cast_from.__dict__.items():
+                setattr(self, key, value)
+        else:
+            for key, value in data.iteritems():
+                setattr(self, key, value)
 
     def __setattr__(self, key, value):
         if key in self._members:
@@ -129,10 +168,22 @@ class StructType(CythonType):
 
 class UnionType(CythonType):
 
-    def __init__(self, **data):
-        if len(data) > 0:
+    def __init__(self, cast_from=_Unspecified, **data):
+        if cast_from is not _Unspecified:
+            # do type cast
+            if len(data) > 0:
+                raise ValueError('Cannot accept keyword arguments when casting.')
+            if isinstance(cast_from, dict):
+                datadict = cast_from
+            elif type(cast_from) is type(self):
+                datadict = cast_from.__dict__
+            else:
+                raise ValueError('Cannot cast from %s'%cast_from)
+        else:
+            datadict = data
+        if len(datadict) > 1:
             raise AttributeError("Union can only store one field at a time.")
-        for key, value in data.iteritems():
+        for key, value in datadict.iteritems():
             setattr(self, key, value)
 
     def __setattr__(self, key, value):
@@ -173,9 +224,8 @@ class typedef(CythonType):
     def __init__(self, type):
         self._basetype = type
 
-    def __call__(self, value=None):
-        if value is not None:
-            value = cast(self._basetype, value)
+    def __call__(self, *arg):
+        value = cast(self._basetype, *arg)
         return value
 
 
@@ -229,4 +279,30 @@ for t in int_types + float_types + complex_types + other_types:
         gs["%s_%s" % ('p'*i, t)] = globals()[t]._pointer(i)
 
 void = typedef(None)
-NULL = None
+NULL = p_void(0)
+
+class CythonDotParallel(object):
+    """
+    The cython.parallel module.
+    """
+
+    __all__ = ['parallel', 'prange', 'threadid']
+
+    def parallel(self, num_threads=None):
+        return nogil
+
+    def prange(self, start=0, stop=None, step=1, schedule=None, nogil=False):
+        if stop is None:
+            stop = start
+            start = 0
+        return range(start, stop, step)
+
+    def threadid(self):
+        return 0
+
+    # def threadsavailable(self):
+        # return 1
+
+import sys
+sys.modules['cython.parallel'] = CythonDotParallel()
+del sys

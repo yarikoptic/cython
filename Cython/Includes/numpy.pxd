@@ -81,17 +81,19 @@ cdef extern from "numpy/arrayobject.h":
         NPY_COMPLEX256
         NPY_COMPLEX512
 
-    enum NPY_ORDER:
+        NPY_INTP
+
+    ctypedef enum NPY_ORDER:
         NPY_ANYORDER
         NPY_CORDER
         NPY_FORTRANORDER
 
-    enum NPY_CLIPMODE:
+    ctypedef enum NPY_CLIPMODE:
         NPY_CLIP
         NPY_WRAP
         NPY_RAISE
 
-    enum NPY_SCALARKIND:
+    ctypedef enum NPY_SCALARKIND:
         NPY_NOSCALAR,
         NPY_BOOL_SCALAR,
         NPY_INTPOS_SCALAR,
@@ -101,12 +103,12 @@ cdef extern from "numpy/arrayobject.h":
         NPY_OBJECT_SCALAR
 
 
-    enum NPY_SORTKIND:
+    ctypedef enum NPY_SORTKIND:
         NPY_QUICKSORT
         NPY_HEAPSORT
         NPY_MERGESORT
 
-    cdef enum requirements:
+    enum:
         NPY_C_CONTIGUOUS
         NPY_F_CONTIGUOUS
         NPY_CONTIGUOUS
@@ -190,6 +192,9 @@ cdef extern from "numpy/arrayobject.h":
             # requirements, and does not yet fullfill the PEP.
             # In particular strided access is always provided regardless
             # of flags
+
+            if info == NULL: return
+
             cdef int copy_shape, i, ndim
             cdef int endian_detector = 1
             cdef bint little_endian = ((<char*>&endian_detector)[0] != 0)
@@ -212,9 +217,9 @@ cdef extern from "numpy/arrayobject.h":
             info.buf = PyArray_DATA(self)
             info.ndim = ndim
             if copy_shape:
-                # Allocate new buffer for strides and shape info. This is allocated
-                # as one block, strides first.
-                info.strides = <Py_ssize_t*>stdlib.malloc(sizeof(Py_ssize_t) * ndim * 2)
+                # Allocate new buffer for strides and shape info.
+                # This is allocated as one block, strides first.
+                info.strides = <Py_ssize_t*>stdlib.malloc(sizeof(Py_ssize_t) * <size_t>ndim * 2)
                 info.shape = info.strides + ndim
                 for i in range(ndim):
                     info.strides[i] = PyArray_STRIDES(self)[i]
@@ -737,11 +742,14 @@ ctypedef double complex complex128_t
 # numpy.int corresponds to 'l' and numpy.long to 'q'
 ctypedef npy_long       int_t
 ctypedef npy_longlong   long_t
-ctypedef npy_intp       intp_t
-ctypedef npy_uintp      uintp_t
+ctypedef npy_longlong   longlong_t
 
 ctypedef npy_ulong      uint_t
 ctypedef npy_ulonglong  ulong_t
+ctypedef npy_ulonglong  ulonglong_t
+
+ctypedef npy_intp       intp_t
+ctypedef npy_uintp      uintp_t
 
 ctypedef npy_double     float_t
 ctypedef npy_double     double_t

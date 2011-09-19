@@ -2,7 +2,7 @@
 #   Cython Top Level
 #
 
-import os, sys, re
+import os, sys, re, codecs
 if sys.version_info[:2] < (2, 3):
     sys.stderr.write("Sorry, Cython requires Python 2.3 or later\n")
     sys.exit(1)
@@ -14,7 +14,6 @@ except NameError:
     from sets import Set as set
 
 import itertools
-from time import time
 
 import Code
 import Errors
@@ -29,23 +28,12 @@ from Errors import PyrexError, CompileError, InternalError, AbortError, error, w
 from Symtab import BuiltinScope, ModuleScope
 from Cython import Utils
 from Cython.Utils import open_new_file, replace_suffix
-import CythonScope
 import DebugFlags
+import Options
 
 module_name_pattern = re.compile(r"[A-Za-z_][A-Za-z0-9_]*(\.[A-Za-z_][A-Za-z0-9_]*)*$")
 
 verbose = 0
-
-def dumptree(t):
-    # For quick debugging in pipelines
-    print t.dump()
-    return t
-
-def abort_on_errors(node):
-    # Stop the pipeline if there are any errors.
-    if Errors.num_errors != 0:
-        raise AbortError, "pipeline break"
-    return node
 
 class CompilationData(object):
     #  Bundles the information that is passed from transform to transform.
@@ -73,14 +61,24 @@ class Context(object):
     #  future_directives     [object]
     #  language_level        int     currently 2 or 3 for Python 2/3
 
-    def __init__(self, include_directories, compiler_directives, cpp=False, language_level=2):
+    cython_scope = None
+
+    def __init__(self, include_directories, compiler_directives, cpp=False,
+                 language_level=2, options=None, create_testscope=True):
+        # cython_scope is a hack, set to False by subclasses, in order to break
+        # an infinite loop.
+        # Better code organization would fix it.
+
         import Builtin, CythonScope
         self.modules = {"__builtin__" : Builtin.builtin_scope}
-        self.modules["cython"] = CythonScope.create_cython_scope(self)
+        cyscope = CythonScope.create_cython_scope(
+                self, create_testscope=create_testscope)
+        self.modules["cython"] = self.cython_scope = cyscope
         self.include_directories = include_directories
         self.future_directives = set()
         self.compiler_directives = compiler_directives
         self.cpp = cpp
+        self.options = options
 
         self.pxds = {} # full name -> node tree
 
@@ -100,165 +98,25 @@ class Context(object):
             self.future_directives.add(unicode_literals)
             self.modules['builtins'] = self.modules['__builtin__']
 
-    def create_pipeline(self, pxd, py=False):
-        from Visitor import PrintTree
-        from ParseTreeTransforms import WithTransform, NormalizeTree, PostParse, PxdPostParse
-        from ParseTreeTransforms import AnalyseDeclarationsTransform, AnalyseExpressionsTransform
-        from ParseTreeTransforms import CreateClosureClasses, MarkClosureVisitor, DecoratorTransform
-        from ParseTreeTransforms import InterpretCompilerDirectives, TransformBuiltinMethods
-        from ParseTreeTransforms import ExpandInplaceOperators
-        from TypeInference import MarkAssignments, MarkOverflowingArithmetic
-        from ParseTreeTransforms import AlignFunctionDefinitions, GilCheck
-        from AnalysedTreeTransforms import AutoTestDictTransform
-        from AutoDocTransforms import EmbedSignature
-        from Optimize import FlattenInListTransform, SwitchTransform, IterationTransform
-        from Optimize import EarlyReplaceBuiltinCalls, OptimizeBuiltinCalls
-        from Optimize import ConstantFolding, FinalOptimizePhase
-        from Optimize import DropRefcountingTransform
-        from Buffer import IntroduceBufferAuxiliaryVars
-        from ModuleNode import check_c_declarations, check_c_declarations_pxd
-
-        if pxd:
-            _check_c_declarations = check_c_declarations_pxd
-            _specific_post_parse = PxdPostParse(self)
-        else:
-            _check_c_declarations = check_c_declarations
-            _specific_post_parse = None
-
-        if py and not pxd:
-            _align_function_definitions = AlignFunctionDefinitions(self)
-        else:
-            _align_function_definitions = None
-
-        return [
-            NormalizeTree(self),
-            PostParse(self),
-            _specific_post_parse,
-            InterpretCompilerDirectives(self, self.compiler_directives),
-            _align_function_definitions,
-            MarkClosureVisitor(self),
-            ConstantFolding(),
-            FlattenInListTransform(),
-            WithTransform(self),
-            DecoratorTransform(self),
-            AnalyseDeclarationsTransform(self),
-            AutoTestDictTransform(self),
-            EmbedSignature(self),
-            EarlyReplaceBuiltinCalls(self),  ## Necessary?
-            MarkAssignments(self),
-            MarkOverflowingArithmetic(self),
-            TransformBuiltinMethods(self),  ## Necessary?
-            IntroduceBufferAuxiliaryVars(self),
-            _check_c_declarations,
-            AnalyseExpressionsTransform(self),
-            CreateClosureClasses(self),  ## After all lookups and type inference
-            ExpandInplaceOperators(self),
-            OptimizeBuiltinCalls(self),  ## Necessary?
-            IterationTransform(),
-            SwitchTransform(),
-            DropRefcountingTransform(),
-            FinalOptimizePhase(self),
-            GilCheck(),
-            ]
-
-    def create_pyx_pipeline(self, options, result, py=False):
-        def generate_pyx_code(module_node):
-            module_node.process_implementation(options, result)
-            result.compilation_source = module_node.compilation_source
-            return result
-
-        def inject_pxd_code(module_node):
-            from textwrap import dedent
-            stats = module_node.body.stats
-            for name, (statlistnode, scope) in self.pxds.iteritems():
-                # Copy over function nodes to the module
-                # (this seems strange -- I believe the right concept is to split
-                # ModuleNode into a ModuleNode and a CodeGenerator, and tell that
-                # CodeGenerator to generate code both from the pyx and pxd ModuleNodes.
-                 stats.append(statlistnode)
-                 # Until utility code is moved to code generation phase everywhere,
-                 # we need to copy it over to the main scope
-                 module_node.scope.utility_code_list.extend(scope.utility_code_list)
-            return module_node
-
-        test_support = []
-        if options.evaluate_tree_assertions:
-            from Cython.TestUtils import TreeAssertVisitor
-            test_support.append(TreeAssertVisitor())
-
-        if options.gdb_debug:
-            from Cython.Debugger import DebugWriter
-            from ParseTreeTransforms import DebugTransform
-            self.gdb_debug_outputwriter = DebugWriter.CythonDebugWriter(
-                options.output_dir)
-            debug_transform = [DebugTransform(self, options, result)]
-        else:
-            debug_transform = []
-
-        return list(itertools.chain(
-            [create_parse(self)],
-            self.create_pipeline(pxd=False, py=py),
-            test_support,
-            [inject_pxd_code, abort_on_errors],
-            debug_transform,
-            [generate_pyx_code]))
-
-    def create_pxd_pipeline(self, scope, module_name):
-        def parse_pxd(source_desc):
-            tree = self.parse(source_desc, scope, pxd=True,
-                              full_module_name=module_name)
-            tree.scope = scope
-            tree.is_pxd = True
-            return tree
-
-        from CodeGeneration import ExtractPxdCode
-
-        # The pxd pipeline ends up with a CCodeWriter containing the
-        # code of the pxd, as well as a pxd scope.
-        return [parse_pxd] + self.create_pipeline(pxd=True) + [
-            ExtractPxdCode(self),
-            ]
-
-    def create_py_pipeline(self, options, result):
-        return self.create_pyx_pipeline(options, result, py=True)
-
+    # pipeline creation functions can now be found in Pipeline.py
 
     def process_pxd(self, source_desc, scope, module_name):
-        pipeline = self.create_pxd_pipeline(scope, module_name)
-        result = self.run_pipeline(pipeline, source_desc)
+        import Pipeline
+        if isinstance(source_desc, FileSourceDescriptor) and source_desc._file_type == 'pyx':
+            source = CompilationSource(source_desc, module_name, os.getcwd())
+            result_sink = create_default_resultobj(source, self.options)
+            pipeline = Pipeline.create_pyx_as_pxd_pipeline(self, result_sink)
+            result = Pipeline.run_pipeline(pipeline, source)
+        else:
+            pipeline = Pipeline.create_pxd_pipeline(self, scope, module_name)
+            result = Pipeline.run_pipeline(pipeline, source_desc)
         return result
 
     def nonfatal_error(self, exc):
         return Errors.report_error(exc)
 
-    def run_pipeline(self, pipeline, source):
-        error = None
-        data = source
-        try:
-            try:
-                for phase in pipeline:
-                    if phase is not None:
-                        if DebugFlags.debug_verbose_pipeline:
-                            t = time()
-                            print "Entering pipeline phase %r" % phase
-                        data = phase(data)
-                        if DebugFlags.debug_verbose_pipeline:
-                            print "    %.3f seconds" % (time() - t)
-            except CompileError, err:
-                # err is set
-                Errors.report_error(err)
-                error = err
-        except InternalError, err:
-            # Only raise if there was not an earlier error
-            if Errors.num_errors == 0:
-                raise
-            error = err
-        except AbortError, err:
-            error = err
-        return (error, data)
-
     def find_module(self, module_name,
-            relative_to = None, pos = None, need_pxd = 1):
+            relative_to = None, pos = None, need_pxd = 1, check_module_name = True):
         # Finds and returns the module scope corresponding to
         # the given relative or absolute module name. If this
         # is the first time the module has been requested, finds
@@ -273,7 +131,7 @@ class Context(object):
 
         scope = None
         pxd_pathname = None
-        if not module_name_pattern.match(module_name):
+        if check_module_name and not module_name_pattern.match(module_name):
             if pos is None:
                 pos = (module_name, 0, 0)
             raise CompileError(pos,
@@ -356,6 +214,8 @@ class Context(object):
                         warning(pos, "'%s' is deprecated, use 'libc.%s'" % (name, name), 1)
                     elif name in ('stl'):
                         warning(pos, "'%s' is deprecated, use 'libcpp.*.*'" % name, 1)
+        if pxd is None and Options.cimport_from_pyx:
+            return self.find_pyx_file(qualified_name, pos)
         return pxd
 
     def find_pyx_file(self, qualified_name, pos):
@@ -558,19 +418,6 @@ class Context(object):
                 pass
             result.c_file = None
 
-def create_parse(context):
-    def parse(compsrc):
-        source_desc = compsrc.source_desc
-        full_module_name = compsrc.full_module_name
-        initial_pos = (source_desc, 1, 0)
-        scope = context.find_module(full_module_name, pos = initial_pos, need_pxd = 0)
-        tree = context.parse(source_desc, scope, pxd = 0, full_module_name = full_module_name)
-        tree.compilation_source = compsrc
-        tree.scope = scope
-        tree.is_pxd = False
-        return tree
-    return parse
-
 def create_default_resultobj(compilation_source, options):
     result = CompilationResult()
     result.main_source_file = compilation_source.source_desc.filename
@@ -587,6 +434,7 @@ def create_default_resultobj(compilation_source, options):
     return result
 
 def run_pipeline(source, options, full_module_name = None):
+    import Pipeline
     # Set up context
     context = options.create_context()
 
@@ -607,14 +455,22 @@ def run_pipeline(source, options, full_module_name = None):
     # Set up result object
     result = create_default_resultobj(source, options)
 
+    if options.annotate is None:
+        # By default, decide based on whether an html file already exists.
+        html_filename = os.path.splitext(result.c_file)[0] + ".html"
+        if os.path.exists(html_filename):
+            line = codecs.open(html_filename, "r", encoding="UTF-8").readline()
+            if line.startswith(u'<!-- Generated by Cython'):
+                options.annotate = True
+
     # Get pipeline
-    if source_ext.lower() == '.py':
-        pipeline = context.create_py_pipeline(options, result)
+    if source_ext.lower() == '.py' or not source_ext:
+        pipeline = Pipeline.create_py_pipeline(context, options, result)
     else:
-        pipeline = context.create_pyx_pipeline(options, result)
+        pipeline = Pipeline.create_pyx_pipeline(context, options, result)
 
     context.setup_errors(options, result)
-    err, enddata = context.run_pipeline(pipeline, source)
+    err, enddata = Pipeline.run_pipeline(pipeline, source)
     context.teardown_errors(err, options, result)
     return result
 
@@ -669,7 +525,7 @@ class CompilationOptions(object):
 
     def create_context(self):
         return Context(self.include_path, self.compiler_directives,
-                      self.cplus, self.language_level)
+                      self.cplus, self.language_level, options=self)
 
 
 class CompilationResult(object):
@@ -826,7 +682,7 @@ default_options = dict(
     errors_to_stderr = 1,
     cplus = 0,
     output_file = None,
-    annotate = False,
+    annotate = None,
     generate_pxi = 0,
     working_path = "",
     recursive = 0,

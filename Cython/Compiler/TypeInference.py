@@ -23,12 +23,47 @@ object_expr = TypedExprNode(py_object_type)
 
 class MarkAssignments(CythonTransform):
 
-    def mark_assignment(self, lhs, rhs):
+    # tells us whether we're in a normal loop
+    in_loop = False
+
+    parallel_errors = False
+
+    def __init__(self, context):
+        super(CythonTransform, self).__init__()
+        self.context = context
+
+        # Track the parallel block scopes (with parallel, for i in prange())
+        self.parallel_block_stack = []
+
+    def mark_assignment(self, lhs, rhs, inplace_op=None):
         if isinstance(lhs, (ExprNodes.NameNode, Nodes.PyArgDeclNode)):
             if lhs.entry is None:
                 # TODO: This shouldn't happen...
                 return
             lhs.entry.assignments.append(rhs)
+
+            if self.parallel_block_stack:
+                parallel_node = self.parallel_block_stack[-1]
+                previous_assignment = parallel_node.assignments.get(lhs.entry)
+
+                # If there was a previous assignment to the variable, keep the
+                # previous assignment position
+                if previous_assignment:
+                    pos, previous_inplace_op = previous_assignment
+
+                    if (inplace_op and previous_inplace_op and
+                            inplace_op != previous_inplace_op):
+                        # x += y; x *= y
+                        t = (inplace_op, previous_inplace_op)
+                        error(lhs.pos,
+                              "Reduction operator '%s' is inconsistent "
+                              "with previous reduction operator '%s'" % t)
+                else:
+                    pos = lhs.pos
+
+                parallel_node.assignments[lhs.entry] = (pos, inplace_op)
+                parallel_node.assigned_nodes.append(lhs)
+
         elif isinstance(lhs, ExprNodes.SequenceNode):
             for arg in lhs.args:
                 self.mark_assignment(arg, object_expr)
@@ -48,7 +83,7 @@ class MarkAssignments(CythonTransform):
         return node
 
     def visit_InPlaceAssignmentNode(self, node):
-        self.mark_assignment(node.lhs, node.create_binop_node())
+        self.mark_assignment(node.lhs, node.create_binop_node(), node.operator)
         self.visitchildren(node)
         return node
 
@@ -56,6 +91,11 @@ class MarkAssignments(CythonTransform):
         # TODO: Remove redundancy with range optimization...
         is_special = False
         sequence = node.iterator.sequence
+        if isinstance(sequence, ExprNodes.SimpleCallNode):
+            function = sequence.function
+            if sequence.self is None and function.is_name:
+                if function.name == 'reversed' and len(sequence.args) == 1:
+                    sequence = sequence.args[0]
         if isinstance(sequence, ExprNodes.SimpleCallNode):
             function = sequence.function
             if sequence.self is None and function.is_name:
@@ -70,6 +110,7 @@ class MarkAssignments(CythonTransform):
                                                  '+',
                                                  sequence.args[0],
                                                  sequence.args[2]))
+
         if not is_special:
             # A for-loop basically translates to subsequent calls to
             # __getitem__(), so using an IndexNode here allows us to
@@ -80,6 +121,7 @@ class MarkAssignments(CythonTransform):
                 node.pos,
                 base = sequence,
                 index = ExprNodes.IntNode(node.pos, value = '0')))
+
         self.visitchildren(node)
         return node
 
@@ -91,6 +133,10 @@ class MarkAssignments(CythonTransform):
                                          '+',
                                          node.bound1,
                                          node.step))
+        self.visitchildren(node)
+        return node
+
+    def visit_WhileStatNode(self, node):
         self.visitchildren(node)
         return node
 
@@ -120,6 +166,69 @@ class MarkAssignments(CythonTransform):
                 node.starstar_arg, TypedExprNode(Builtin.dict_type))
         self.visitchildren(node)
         return node
+
+    def visit_DelStatNode(self, node):
+        for arg in node.args:
+            self.mark_assignment(arg, arg)
+        self.visitchildren(node)
+        return node
+
+    def visit_ParallelStatNode(self, node):
+        if self.parallel_block_stack:
+            node.parent = self.parallel_block_stack[-1]
+        else:
+            node.parent = None
+
+        nested = False
+        if node.is_prange:
+            if not node.parent:
+                node.is_parallel = True
+            else:
+                node.is_parallel = (node.parent.is_prange or not
+                                    node.parent.is_parallel)
+                nested = node.parent.is_prange
+        else:
+            node.is_parallel = True
+            # Note: nested with parallel() blocks are handled by
+            # ParallelRangeTransform!
+            # nested = node.parent
+            nested = node.parent and node.parent.is_prange
+
+        self.parallel_block_stack.append(node)
+
+        nested = nested or len(self.parallel_block_stack) > 2
+        if not self.parallel_errors and nested:
+
+            error(node.pos,
+                  "Parallel nesting not supported due to bugs in gcc 4.5")
+            self.parallel_errors = True
+
+        if node.is_prange:
+            child_attrs = node.child_attrs
+            node.child_attrs = ['body', 'target', 'args']
+            self.visitchildren(node)
+            node.child_attrs = child_attrs
+
+            self.parallel_block_stack.pop()
+            if node.else_clause:
+                node.else_clause = self.visit(node.else_clause)
+        else:
+            self.visitchildren(node)
+            self.parallel_block_stack.pop()
+
+        self.parallel_errors = False
+        return node
+
+    def visit_YieldExprNode(self, node):
+        if self.parallel_block_stack:
+            error(node.pos, "Yield not allowed in parallel sections")
+
+        return node
+
+    def visit_ReturnStatNode(self, node):
+        node.in_parallel = bool(self.parallel_block_stack)
+        return node
+
 
 class MarkOverflowingArithmetic(CythonTransform):
 
@@ -215,8 +324,9 @@ class SimpleAssignmentTypeInferer(object):
     # TODO: Implement a real type inference algorithm.
     # (Something more powerful than just extending this one...)
     def infer_types(self, scope):
-        enabled = not scope.is_closure_scope and scope.directives['infer_types']
+        enabled = scope.directives['infer_types']
         verbose = scope.directives['infer_types.verbose']
+
         if enabled == True:
             spanning_type = aggressive_spanning_type
         elif enabled is None: # safe mode
@@ -232,6 +342,10 @@ class SimpleAssignmentTypeInferer(object):
         ready_to_infer = []
         for name, entry in scope.entries.items():
             if entry.type is unspecified_type:
+                if entry.in_closure or entry.from_closure:
+                    # cross-closure type inference is not currently supported
+                    entry.type = py_object_type
+                    continue
                 all = set()
                 for expr in entry.assignments:
                     all.update(expr.type_dependencies(scope))
@@ -244,6 +358,7 @@ class SimpleAssignmentTypeInferer(object):
                             entries_by_dependancy[dep].add(entry)
                 else:
                     ready_to_infer.append(entry)
+
         def resolve_dependancy(dep):
             if dep in entries_by_dependancy:
                 for entry in entries_by_dependancy[dep]:
@@ -252,6 +367,7 @@ class SimpleAssignmentTypeInferer(object):
                     if not entry_deps and entry != dep:
                         del dependancies_by_entry[entry]
                         ready_to_infer.append(entry)
+
         # Try to infer things in order...
         while True:
             while ready_to_infer:

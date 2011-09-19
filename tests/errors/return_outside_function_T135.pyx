@@ -1,3 +1,6 @@
+# cython: remove_unreachable=False
+# ticket: 135
+# mode: error
 
 def _runtime_True():
     return True
@@ -29,13 +32,13 @@ else:
 
 
 _ERRORS = u'''
- 5:0: Return not inside a function body
- 8:4: Return not inside a function body
+8:0: Return not inside a function body
 11:4: Return not inside a function body
-13:5: Return not inside a function body
+14:4: Return not inside a function body
 16:5: Return not inside a function body
-20:4: Return not inside a function body
+19:5: Return not inside a function body
 23:4: Return not inside a function body
 26:4: Return not inside a function body
-28:4: Return not inside a function body
+29:4: Return not inside a function body
+31:4: Return not inside a function body
 '''

@@ -1,3 +1,5 @@
+# ticket: 255
+
 __doc__ = u""
 
 # -------------------------------------------------------------------
@@ -93,10 +95,10 @@ def test_char(char x):
    Traceback (most recent call last):
        ...
    OverflowError: ...
+   >>> if CHAR_MIN < 0: 
+   ...     assert test_char(-1) == -1
    >>> test_char(CHAR_MIN) == CHAR_MIN
    True
-   >>> test_char(-1)
-   -1
    >>> test_char(0)
    0
    >>> test_char(1)

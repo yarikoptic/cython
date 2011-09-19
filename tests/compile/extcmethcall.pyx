@@ -1,3 +1,5 @@
+# mode: compile
+
 cdef class Spam:
 
     cdef int tons
@@ -12,7 +14,7 @@ cdef class SuperSpam(Spam):
 
 cdef void tomato():
     cdef Spam spam
-    cdef SuperSpam superspam
+    cdef SuperSpam superspam = SuperSpam()
     spam = superspam
     spam.add_tons(42)
     superspam.add_tons(1764)

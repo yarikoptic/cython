@@ -1,5 +1,5 @@
 #
-#   Pyrex - C naming conventions
+#   C naming conventions
 #
 #
 #   Prefixes for generating C names.
@@ -19,6 +19,7 @@ funcdoc_prefix    = pyrex_prefix + "doc_"
 enum_prefix       = pyrex_prefix + "e_"
 func_prefix       = pyrex_prefix + "f_"
 pyfunc_prefix     = pyrex_prefix + "pf_"
+genbody_prefix    = pyrex_prefix + "gb_"
 gstab_prefix      = pyrex_prefix + "getsets_"
 prop_get_prefix   = pyrex_prefix + "getprop_"
 const_prefix      = pyrex_prefix + "k_"
@@ -35,6 +36,7 @@ prop_set_prefix   = pyrex_prefix + "setprop_"
 type_prefix       = pyrex_prefix + "t_"
 typeobj_prefix    = pyrex_prefix + "type_"
 var_prefix        = pyrex_prefix + "v_"
+varptr_prefix     = pyrex_prefix + "vp_"
 wrapperbase_prefix= pyrex_prefix + "wrapperbase_"
 bufstruct_prefix  = pyrex_prefix + "bstruct_"
 bufstride_prefix  = pyrex_prefix + "bstride_"
@@ -51,6 +53,7 @@ lambda_func_prefix = pyrex_prefix + "lambda_"
 module_is_main   = pyrex_prefix + "module_is_main_"
 
 args_cname       = pyrex_prefix + "args"
+sent_value_cname = pyrex_prefix + "sent_value"
 pykwdlist_cname  = pyrex_prefix + "pyargnames"
 obj_base_cname   = pyrex_prefix + "base"
 builtins_cname   = pyrex_prefix + "b"
@@ -105,17 +108,23 @@ exc_value_name  = pyrex_prefix + "exc_value"
 exc_tb_name     = pyrex_prefix + "exc_tb"
 exc_lineno_name = pyrex_prefix + "exc_lineno"
 
-exc_vars = (exc_type_name, exc_value_name, exc_tb_name)
+parallel_exc_type = pyrex_prefix + "parallel_exc_type"
+parallel_exc_value = pyrex_prefix + "parallel_exc_value"
+parallel_exc_tb = pyrex_prefix + "parallel_exc_tb"
+parallel_filename = pyrex_prefix + "parallel_filename"
+parallel_lineno = pyrex_prefix + "parallel_lineno"
+parallel_clineno = pyrex_prefix + "parallel_clineno"
+parallel_why = pyrex_prefix + "parallel_why"
 
-exc_save_vars = (pyrex_prefix + 'save_exc_type',
-                 pyrex_prefix + 'save_exc_value',
-                 pyrex_prefix + 'save_exc_tb')
+exc_vars = (exc_type_name, exc_value_name, exc_tb_name)
 
 api_name        = pyrex_prefix + "capi__"
 
 h_guard_prefix   = "__PYX_HAVE__"
 api_guard_prefix = "__PYX_HAVE_API__"
 api_func_guard   = "__PYX_HAVE_API_FUNC_"
+
+PYX_NAN          = "__PYX_NAN"
 
 def py_version_hex(major, minor=0, micro=0, release_level=0, release_serial=0):
     return (major << 24) | (minor << 16) | (micro << 8) | (release_level << 4) | (release_serial)

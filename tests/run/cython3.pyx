@@ -1,4 +1,6 @@
 # cython: language_level=3
+# mode: run
+# tag: generators, python3
 
 cimport cython
 
@@ -89,6 +91,16 @@ def list_comp():
     assert x == 'abc' # don't leak in Py3 code
     return result
 
+def list_comp_with_lambda():
+    """
+    >>> list_comp_with_lambda()
+    [0, 4, 8]
+    """
+    x = 'abc'
+    result = [x*2 for x in range(5) if (lambda x:x % 2)(x) == 0]
+    assert x == 'abc' # don't leak in Py3 code
+    return result
+
 module_level_lc = [ module_level_loopvar*2 for module_level_loopvar in range(4) ]
 def list_comp_module_level():
     """
@@ -152,8 +164,7 @@ def dict_comp():
 # in Python 3, d.keys/values/items() are the iteration methods
 @cython.test_assert_path_exists(
     "//WhileStatNode",
-    "//WhileStatNode/SimpleCallNode",
-    "//WhileStatNode/SimpleCallNode/NameNode")
+    "//WhileStatNode//DictIterationNextNode")
 @cython.test_fail_if_path_exists(
     "//ForInStatNode")
 def dict_iter(dict d):
@@ -166,11 +177,37 @@ def dict_iter(dict d):
     [1, 2, 3]
     >>> sorted(items)
     [('a', 1), ('b', 2), ('c', 3)]
+
+    >>> dict_iter({})
+    ([], [], [])
     """
     keys = [ key for key in d.keys() ]
     values = [ value for value in d.values() ]
     items = [ item for item in d.items() ]
     return keys, values, items
+
+@cython.test_assert_path_exists(
+    "//WhileStatNode",
+    "//WhileStatNode//DictIterationNextNode")
+@cython.test_fail_if_path_exists(
+    "//ForInStatNode")
+def dict_iter_new_dict():
+    """
+    >>> dict_keys, keys, values, items = dict_iter_new_dict()
+    >>> sorted(dict_keys)
+    [11, 22, 33]
+    >>> sorted(keys)
+    [11, 22, 33]
+    >>> sorted(values)
+    [1, 2, 3]
+    >>> sorted(items)
+    [(11, 1), (22, 2), (33, 3)]
+    """
+    dict_keys = [ key for key in {11 : 1, 22 : 2, 33 : 3} ]
+    keys = [ key for key in {11 : 1, 22 : 2, 33 : 3}.keys() ]
+    values = [ value for value in {11 : 1, 22 : 2, 33 : 3}.values() ]
+    items = [ item for item in {11 : 1, 22 : 2, 33 : 3}.items() ]
+    return dict_keys, keys, values, items
 
 def int_literals():
     """

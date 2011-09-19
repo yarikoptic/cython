@@ -1,10 +1,10 @@
 #
-#   Pyrex - Errors
+#   Errors
 #
 
 import sys
 from Cython.Utils import open_new_file
-from DebugFlags import debug_exception_on_error
+import DebugFlags
 import Options
 
 
@@ -20,7 +20,7 @@ def context(position):
     assert not (isinstance(source, unicode) or isinstance(source, str)), (
         "Please replace filename strings with Scanning.FileSourceDescriptor instances %r" % source)
     try:
-        F = list(source.get_lines())
+        F = source.get_lines()
     except UnicodeDecodeError:
         # file has an encoding problem
         s = u"[unprintable code]\n"
@@ -32,7 +32,7 @@ def context(position):
 
 def format_position(position):
     if position:
-        return u"%s:%d:%d: " % (position[0].get_description(),
+        return u"%s:%d:%d: " % (position[0].get_error_description(),
                                 position[1], position[2])
     return u''
 
@@ -156,7 +156,7 @@ def error(position, message):
     if position is None:
         raise InternalError(message)
     err = CompileError(position, message)
-    if debug_exception_on_error: raise Exception(err) # debug
+    if DebugFlags.debug_exception_on_error: raise Exception(err) # debug
     report_error(err)
     return err
 
@@ -176,6 +176,8 @@ def message(position, message, level=1):
 def warning(position, message, level=0):
     if level < LEVEL:
         return
+    if Options.warning_errors and position:
+        return error(position, message)
     warn = CompileWarning(position, message)
     line = "warning: %s\n" % warn
     if listing_file:

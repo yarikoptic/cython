@@ -1,3 +1,4 @@
+# ticket: 561
 # The patch in #561 changes code generation for most special methods
 # to remove the Cython-generated wrapper and let PyType_Ready()
 # generate its own wrapper.  (This wrapper would be used, for instance,
@@ -401,7 +402,7 @@ cdef class VerySpecial:
     def __imod__(self, other):
         print "VS __imod__ %d %%= %d" % (self.value, other.value)
 
-    def __ipow__(self, other, mod):
+    def __ipow__(self, other):
         # We must declare mod as an argument, but we must not touch it
         # or we'll get a segfault.  See #562
         print "VS __ipow__ %d %d" % (self.value, other.value)

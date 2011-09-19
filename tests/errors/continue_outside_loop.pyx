@@ -1,3 +1,5 @@
+# cython: remove_unreachable=False
+# mode: error
 
 continue
 
@@ -25,11 +27,11 @@ def bool_result():
     return True
 
 _ERRORS = u'''
-2:0: continue statement not inside loop
-5:4: continue statement not inside loop
-8:4: continue statement not inside loop
-11:4: continue statement not inside loop
-16:5: continue statement not inside loop
-20:4: continue statement not inside loop
+4:0: continue statement not inside loop
+7:4: continue statement not inside loop
+10:4: continue statement not inside loop
+13:4: continue statement not inside loop
+18:5: continue statement not inside loop
 22:4: continue statement not inside loop
+24:4: continue statement not inside loop
 '''

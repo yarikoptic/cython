@@ -1,3 +1,5 @@
+# cython: remove_unreachable=False
+# mode: error
 
 break
 
@@ -26,11 +28,11 @@ def bool_result():
 
 
 _ERRORS = u'''
-2:0: break statement not inside loop
-5:4: break statement not inside loop
-8:4: break statement not inside loop
-11:4: break statement not inside loop
-16:5: break statement not inside loop
-20:4: break statement not inside loop
+4:0: break statement not inside loop
+7:4: break statement not inside loop
+10:4: break statement not inside loop
+13:4: break statement not inside loop
+18:5: break statement not inside loop
 22:4: break statement not inside loop
+24:4: break statement not inside loop
 '''

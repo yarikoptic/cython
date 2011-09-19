@@ -24,6 +24,16 @@ def cached_method(f):
 
 
 def parse_list(s):
+    """
+    >>> parse_list("a b c")
+    ['a', 'b', 'c']
+    >>> parse_list("[a, b, c]")
+    ['a', 'b', 'c']
+    >>> parse_list('a " " b')
+    ['a', ' ', 'b']
+    >>> parse_list('[a, ",a", "a,", ",", ]')
+    ['a', ',a', 'a,', ',']
+    """
     if s[0] == '[' and s[-1] == ']':
         s = s[1:-1]
         delimiter = ','
@@ -32,12 +42,11 @@ def parse_list(s):
     s, literals = strip_string_literals(s)
     def unquote(literal):
         literal = literal.strip()
-        if literal[0] == "'":
+        if literal[0] in "'\"":
             return literals[literal[1:-1]]
         else:
             return literal
-
-    return [unquote(item) for item in s.split(delimiter)]
+    return [unquote(item) for item in s.split(delimiter) if item.strip()]
 
 transitive_str = object()
 transitive_list = object()
@@ -282,8 +291,8 @@ class DependencyTree(object):
 
     #@cached_method
     def package(self, filename):
-        dir = os.path.dirname(filename)
-        if os.path.exists(os.path.join(dir, '__init__.py')):
+        dir = os.path.dirname(os.path.abspath(filename))
+        if dir != filename and os.path.exists(os.path.join(dir, '__init__.py')):
             return self.package(dir) + (os.path.basename(dir),)
         else:
             return ()
@@ -434,16 +443,19 @@ def create_extension_list(patterns, exclude=[], ctx=None, aliases=None):
                     for key, value in base.values.items():
                         if key not in kwds:
                             kwds[key] = value
+                sources = [file]
+                if template is not None:
+                    sources += template.sources[1:]
                 module_list.append(exn_type(
                         name=module_name,
-                        sources=[file],
+                        sources=sources,
                         **kwds))
                 m = module_list[-1]
                 seen.add(name)
     return module_list
 
 # This is the user-exposed entry point.
-def cythonize(module_list, exclude=[], nthreads=0, aliases=None, quiet=False, **options):
+def cythonize(module_list, exclude=[], nthreads=0, aliases=None, quiet=False, force=False, **options):
     if 'include_path' not in options:
         options['include_path'] = ['.']
     c_options = CompilationOptions(**options)
@@ -479,7 +491,7 @@ def cythonize(module_list, exclude=[], nthreads=0, aliases=None, quiet=False, **
                 else:
                     dep_timestamp, dep = deps.newest_dependency(source)
                     priority = 2 - (dep in deps.immediate_dependencies(source))
-                if c_timestamp < dep_timestamp:
+                if force or c_timestamp < dep_timestamp:
                     if not quiet:
                         if source == dep:
                             print("Compiling %s because it changed." % source)
@@ -502,14 +514,16 @@ def cythonize(module_list, exclude=[], nthreads=0, aliases=None, quiet=False, **
             nthreads = 0
     if not nthreads:
         for priority, pyx_file, c_file, options in to_compile:
-            cythonize_one(pyx_file, c_file, options)
+            cythonize_one(pyx_file, c_file, quiet, options)
     return module_list
 
 # TODO: Share context? Issue: pyx processing leaks into pxd module
-def cythonize_one(pyx_file, c_file, options=None):
+def cythonize_one(pyx_file, c_file, quiet, options=None):
     from Cython.Compiler.Main import compile, default_options
     from Cython.Compiler.Errors import CompileError, PyrexError
 
+    if not quiet:
+        print "Cythonizing %s" % pyx_file
     if options is None:
         options = CompilationOptions(default_options)
     options.output_file = c_file

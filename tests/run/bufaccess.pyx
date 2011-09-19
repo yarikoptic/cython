@@ -47,15 +47,6 @@ def nousage():
     """
     cdef object[int, ndim=2] buf
 
-def printbuf():
-    """
-    Just compilation.
-    """
-    cdef object[int, ndim=2] buf
-    print buf
-    return
-    buf[0,0] = 0
-
 @testcase
 def acquire_release(o1, o2):
     """
@@ -681,20 +672,20 @@ def mixed_get(object[int] buf, int unsafe_idx, int safe_idx):
 #
 # Coercions
 #
-@testcase
-def coercions(object[unsigned char] uc):
-    """
-TODO
-    """
-    print type(uc[0])
-    uc[0] = -1
-    print uc[0]
-    uc[0] = <int>3.14
-    print uc[0]
+## @testcase
+## def coercions(object[unsigned char] uc):
+##     """
+## TODO
+##     """
+##     print type(uc[0])
+##     uc[0] = -1
+##     print uc[0]
+##     uc[0] = <int>3.14
+##     print uc[0]
 
-    cdef char* ch = b"asfd"
-    cdef object[object] objbuf
-    objbuf[3] = ch
+##     cdef char* ch = b"asfd"
+##     cdef object[object] objbuf
+##     objbuf[3] = ch
 
 
 #
@@ -1064,7 +1055,8 @@ cdef class MockBuffer:
             stdlib.free(self.buffer)
 
     cdef void* create_buffer(self, data):
-        cdef char* buf = <char*>stdlib.malloc(len(data) * self.itemsize)
+        cdef size_t n = <size_t>(len(data) * self.itemsize)
+        cdef char* buf = <char*>stdlib.malloc(n)
         cdef char* it = buf
         for value in data:
             self.write(it, value)
@@ -1072,19 +1064,22 @@ cdef class MockBuffer:
         return buf
 
     cdef void* create_indirect_buffer(self, data, shape):
+        cdef size_t n = 0
         cdef void** buf
         assert shape[0] == len(data)
         if len(shape) == 1:
             return self.create_buffer(data)
         else:
             shape = shape[1:]
-            buf = <void**>stdlib.malloc(len(data) * sizeof(void*))
+            n = <size_t>len(data) * sizeof(void*)
+            buf = <void**>stdlib.malloc(n)
             for idx, subdata in enumerate(data):
                 buf[idx] = self.create_indirect_buffer(subdata, shape)
             return buf
 
     cdef Py_ssize_t* list_to_sizebuf(self, l):
-        cdef Py_ssize_t* buf = <Py_ssize_t*>stdlib.malloc(len(l) * sizeof(Py_ssize_t))
+        cdef size_t n = <size_t>len(l) * sizeof(Py_ssize_t)
+        cdef Py_ssize_t* buf = <Py_ssize_t*>stdlib.malloc(n)
         for i, x in enumerate(l):
             buf[i] = x
         return buf
@@ -1137,7 +1132,7 @@ cdef class MockBuffer:
 
 cdef class CharMockBuffer(MockBuffer):
     cdef int write(self, char* buf, object value) except -1:
-        (<char*>buf)[0] = <int>value
+        (<char*>buf)[0] = <char>value
         return 0
     cdef get_itemsize(self): return sizeof(char)
     cdef get_default_format(self): return b"@b"
@@ -1172,7 +1167,7 @@ cdef class UnsignedShortMockBuffer(MockBuffer):
 
 cdef class FloatMockBuffer(MockBuffer):
     cdef int write(self, char* buf, object value) except -1:
-        (<float*>buf)[0] = <float>value
+        (<float*>buf)[0] = <float>(<double>value)
         return 0
     cdef get_itemsize(self): return sizeof(float)
     cdef get_default_format(self): return b"f"
@@ -1281,6 +1276,16 @@ cdef struct NestedStruct:
     SmallStruct y
     int z
 
+cdef packed struct PackedStruct:
+    char a
+    int b
+
+cdef struct NestedPackedStruct:
+    char a
+    int b
+    PackedStruct sub
+    int c
+
 cdef class MyStructMockBuffer(MockBuffer):
     cdef int write(self, char* buf, object value) except -1:
         cdef MyStruct* s
@@ -1300,6 +1305,26 @@ cdef class NestedStructMockBuffer(MockBuffer):
 
     cdef get_itemsize(self): return sizeof(NestedStruct)
     cdef get_default_format(self): return b"2T{ii}i"
+
+cdef class PackedStructMockBuffer(MockBuffer):
+    cdef int write(self, char* buf, object value) except -1:
+        cdef PackedStruct* s
+        s = <PackedStruct*>buf;
+        s.a, s.b = value
+        return 0
+
+    cdef get_itemsize(self): return sizeof(PackedStruct)
+    cdef get_default_format(self): return b"^ci"
+
+cdef class NestedPackedStructMockBuffer(MockBuffer):
+    cdef int write(self, char* buf, object value) except -1:
+        cdef NestedPackedStruct* s
+        s = <NestedPackedStruct*>buf;
+        s.a, s.b, s.sub.a, s.sub.b, s.c = value
+        return 0
+
+    cdef get_itemsize(self): return sizeof(NestedPackedStruct)
+    cdef get_default_format(self): return b"ci^ci@i"
 
 @testcase
 def basic_struct(object[MyStruct] buf):
@@ -1324,6 +1349,35 @@ def nested_struct(object[NestedStruct] buf):
     1 2 3 4 5
     """
     print buf[0].x.a, buf[0].x.b, buf[0].y.a, buf[0].y.b, buf[0].z
+
+@testcase
+def packed_struct(object[PackedStruct] buf):
+    """
+    See also buffmt.pyx
+
+    >>> packed_struct(PackedStructMockBuffer(None, [(1, 2)]))
+    1 2
+    >>> packed_struct(PackedStructMockBuffer(None, [(1, 2)], format="T{c^i}"))
+    1 2
+    >>> packed_struct(PackedStructMockBuffer(None, [(1, 2)], format="T{c=i}"))
+    1 2
+
+    """
+    print buf[0].a, buf[0].b
+
+@testcase
+def nested_packed_struct(object[NestedPackedStruct] buf):
+    """
+    See also buffmt.pyx
+
+    >>> nested_packed_struct(NestedPackedStructMockBuffer(None, [(1, 2, 3, 4, 5)]))
+    1 2 3 4 5
+    >>> nested_packed_struct(NestedPackedStructMockBuffer(None, [(1, 2, 3, 4, 5)], format="ci^ci@i"))
+    1 2 3 4 5
+    >>> nested_packed_struct(NestedPackedStructMockBuffer(None, [(1, 2, 3, 4, 5)], format="^c@i^ci@i"))
+    1 2 3 4 5
+    """
+    print buf[0].a, buf[0].b, buf[0].sub.a, buf[0].sub.b, buf[0].c
 
 cdef struct LongComplex:
     long double real

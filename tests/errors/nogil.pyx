@@ -1,3 +1,6 @@
+# cython: remove_unreachable=False
+# mode: error
+
 cdef object f(object x) nogil:
     pass
 
@@ -15,7 +18,7 @@ cdef void r() nogil:
     q()
 
 cdef object m():
-    cdef object x, y, obj
+    cdef object x, y = 0, obj
     cdef int i, j, k
     global fred
     q()
@@ -90,71 +93,70 @@ def bare_pyvar_name(object x):
 # except these: 29, 34, 44, 56, 58, 60, 62-64
 
 _ERRORS = u"""
-1:5: Function with Python return type cannot be declared nogil
-4:5: Function declared nogil has Python locals or temporaries
-6:6: Assignment of Python object not allowed without gil
-9:5: Discarding owned Python object not allowed without gil
-11:5: Function with Python return type cannot be declared nogil
-15:5: Calling gil-requiring function not allowed without gil
-24:9: Calling gil-requiring function not allowed without gil
-26:12: Assignment of Python object not allowed without gil
-28:8: Discarding owned Python object not allowed without gil
-28:16: Constructing complex number not allowed without gil
-30:8: Backquote expression not allowed without gil
-30:8: Discarding owned Python object not allowed without gil
-30:9: Operation not allowed without gil
-31:15: Assignment of Python object not allowed without gil
-31:15: Operation not allowed without gil
-31:15: Python import not allowed without gil
-32:8: Operation not allowed without gil
-32:13: Python import not allowed without gil
-32:25: Constructing Python list not allowed without gil
-32:25: Operation not allowed without gil
-33:17: Iterating over Python object not allowed without gil
-35:11: Discarding owned Python object not allowed without gil
-35:11: Indexing Python object not allowed without gil
-36:11: Discarding owned Python object not allowed without gil
-36:11: Slicing Python object not allowed without gil
-37:11: Constructing Python slice object not allowed without gil
-37:11: Discarding owned Python object not allowed without gil
-37:11: Indexing Python object not allowed without gil
-37:13: Converting to Python object not allowed without gil
-37:15: Converting to Python object not allowed without gil
-37:17: Converting to Python object not allowed without gil
-38:11: Accessing Python attribute not allowed without gil
+4:5: Function with Python return type cannot be declared nogil
+7:5: Function declared nogil has Python locals or temporaries
+9:6: Assignment of Python object not allowed without gil
+12:5: Discarding owned Python object not allowed without gil
+14:5: Function with Python return type cannot be declared nogil
+18:5: Calling gil-requiring function not allowed without gil
+27:9: Calling gil-requiring function not allowed without gil
+29:12: Assignment of Python object not allowed without gil
+31:16: Constructing complex number not allowed without gil
+33:8: Backquote expression not allowed without gil
+33:8: Discarding owned Python object not allowed without gil
+33:9: Operation not allowed without gil
+34:15: Assignment of Python object not allowed without gil
+34:15: Operation not allowed without gil
+34:15: Python import not allowed without gil
+35:8: Operation not allowed without gil
+35:13: Python import not allowed without gil
+35:25: Constructing Python list not allowed without gil
+35:25: Operation not allowed without gil
+36:17: Iterating over Python object not allowed without gil
 38:11: Discarding owned Python object not allowed without gil
-39:9: Constructing Python tuple not allowed without gil
-39:9: Discarding owned Python object not allowed without gil
-40:8: Constructing Python list not allowed without gil
-40:8: Discarding owned Python object not allowed without gil
-41:8: Constructing Python dict not allowed without gil
-41:8: Discarding owned Python object not allowed without gil
-42:12: Discarding owned Python object not allowed without gil
-42:12: Truth-testing Python object not allowed without gil
-43:13: Python type test not allowed without gil
-45:10: Discarding owned Python object not allowed without gil
-45:10: Operation not allowed without gil
-46:8: Discarding owned Python object not allowed without gil
-46:8: Operation not allowed without gil
-47:10: Assignment of Python object not allowed without gil
-47:14: Assignment of Python object not allowed without gil
-48:9: Assignment of Python object not allowed without gil
-48:13: Assignment of Python object not allowed without gil
-48:16: Creating temporary Python reference not allowed without gil
-48:19: Creating temporary Python reference not allowed without gil
-49:11: Assignment of Python object not allowed without gil
-49:11: Indexing Python object not allowed without gil
-50:11: Accessing Python attribute not allowed without gil
-50:11: Assignment of Python object not allowed without gil
-51:8: Constructing Python tuple not allowed without gil
-51:8: Python print statement not allowed without gil
-52:8: Deleting Python object not allowed without gil
-53:8: Returning Python object not allowed without gil
-54:8: Raising exception not allowed without gil
-55:14: Truth-testing Python object not allowed without gil
-57:17: Truth-testing Python object not allowed without gil
-59:8: For-loop using object bounds or target not allowed without gil
-61:8: Try-except statement not allowed without gil
-65:8: Try-finally statement not allowed without gil
-82:8: For-loop using object bounds or target not allowed without gil
+38:11: Indexing Python object not allowed without gil
+39:11: Discarding owned Python object not allowed without gil
+39:11: Slicing Python object not allowed without gil
+40:11: Constructing Python slice object not allowed without gil
+40:11: Discarding owned Python object not allowed without gil
+40:11: Indexing Python object not allowed without gil
+40:13: Converting to Python object not allowed without gil
+40:15: Converting to Python object not allowed without gil
+40:17: Converting to Python object not allowed without gil
+41:11: Accessing Python attribute not allowed without gil
+41:11: Discarding owned Python object not allowed without gil
+42:9: Constructing Python tuple not allowed without gil
+42:9: Discarding owned Python object not allowed without gil
+43:8: Constructing Python list not allowed without gil
+43:8: Discarding owned Python object not allowed without gil
+44:8: Constructing Python dict not allowed without gil
+44:8: Discarding owned Python object not allowed without gil
+45:12: Discarding owned Python object not allowed without gil
+45:12: Truth-testing Python object not allowed without gil
+46:13: Python type test not allowed without gil
+48:10: Discarding owned Python object not allowed without gil
+48:10: Operation not allowed without gil
+49:8: Discarding owned Python object not allowed without gil
+49:8: Operation not allowed without gil
+50:10: Assignment of Python object not allowed without gil
+50:14: Assignment of Python object not allowed without gil
+51:9: Assignment of Python object not allowed without gil
+51:13: Assignment of Python object not allowed without gil
+51:16: Creating temporary Python reference not allowed without gil
+51:19: Creating temporary Python reference not allowed without gil
+52:11: Assignment of Python object not allowed without gil
+52:11: Indexing Python object not allowed without gil
+53:11: Accessing Python attribute not allowed without gil
+53:11: Assignment of Python object not allowed without gil
+54:8: Constructing Python tuple not allowed without gil
+54:8: Python print statement not allowed without gil
+55:8: Deleting Python object not allowed without gil
+56:8: Returning Python object not allowed without gil
+57:8: Raising exception not allowed without gil
+58:14: Truth-testing Python object not allowed without gil
+60:17: Truth-testing Python object not allowed without gil
+62:8: For-loop using object bounds or target not allowed without gil
+64:8: Try-except statement not allowed without gil
+68:8: Cannot use try/finally in nogil sections unless it contains a 'with gil' statement.
+85:8: For-loop using object bounds or target not allowed without gil
 """

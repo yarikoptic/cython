@@ -14,9 +14,12 @@ class TempHandle(object):
     # THIS IS DEPRECATED, USE LetRefNode instead
     temp = None
     needs_xdecref = False
-    def __init__(self, type):
+    def __init__(self, type, needs_cleanup=None):
         self.type = type
-        self.needs_cleanup = type.is_pyobject
+        if needs_cleanup is None:
+            self.needs_cleanup = type.is_pyobject
+        else:
+            self.needs_cleanup = needs_cleanup
 
     def ref(self, pos):
         return TempRefNode(pos, handle=self, type=self.type)
@@ -97,9 +100,6 @@ class TempsBlockNode(Node):
                     code.put_decref_clear(handle.temp, handle.type)
             code.funcstate.release_temp(handle.temp)
 
-    def analyse_control_flow(self, env):
-        self.body.analyse_control_flow(env)
-
     def analyse_declarations(self, env):
         self.body.analyse_declarations(env)
 
@@ -133,6 +133,10 @@ class ResultRefNode(AtomicExprNode):
         if type is not None:
             self.type = type
         assert self.pos is not None
+
+    def clone_node(self):
+        # nothing to do here
+        return self
 
     def analyse_types(self, env):
         if self.expression is not None:
@@ -282,9 +286,6 @@ class LetNode(Nodes.StatNode, LetNodeMixin):
         self.set_temp_expr(lazy_temp)
         self.pos = body.pos
         self.body = body
-
-    def analyse_control_flow(self, env):
-        self.body.analyse_control_flow(env)
 
     def analyse_declarations(self, env):
         self.temp_expression.analyse_declarations(env)

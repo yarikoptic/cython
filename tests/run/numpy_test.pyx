@@ -1,3 +1,4 @@
+# tag: numpy
 # cannot be named "numpy" in order to not clash with the numpy module!
 
 cimport numpy as np
@@ -72,23 +73,23 @@ try:
     Write to slices
     >>> b = a.copy()
     >>> put_range_long_1d(b[:, 3])
-    >>> print b
+    >>> print (b)
     [[0 1 2 0 4]
      [5 6 7 1 9]]
     >>> put_range_long_1d(b[::-1, 3])
-    >>> print b
+    >>> print (b)
     [[0 1 2 1 4]
      [5 6 7 0 9]]
     >>> a = np.zeros(9, dtype='l')
     >>> put_range_long_1d(a[1::3])
-    >>> print a
+    >>> print (a)
     [0 0 0 0 1 0 0 2 0]
 
     Write to picked subarrays. This should NOT change the original
     array as picking creates a new mutable copy.
     >>> a = np.zeros(10, dtype='l').reshape(2, 5)
     >>> put_range_long_1d(a[[0, 0, 1, 1, 0], [0, 1, 2, 4, 3]])
-    >>> print a
+    >>> print (a)
     [[0 0 0 0 0]
      [0 0 0 0 0]]
 
@@ -103,18 +104,18 @@ try:
     0 1 2 3
     4 5 6 7
     8 9 10 11
-    >>> test_c_contig(f_arr)
+    >>> test_c_contig(f_arr) #doctest: +ELLIPSIS
     Traceback (most recent call last):
        ...
-    ValueError: ndarray is not C contiguous
-    >>> test_f_contig(c_arr)
+    ValueError: ndarray is not C...contiguous
+    >>> test_f_contig(c_arr) #doctest: +ELLIPSIS
     Traceback (most recent call last):
        ...
     ValueError: ndarray is not Fortran contiguous
-    >>> test_c_contig(c_arr[::2,::2])
+    >>> test_c_contig(c_arr[::2,::2]) #doctest: +ELLIPSIS
     Traceback (most recent call last):
        ...
-    ValueError: ndarray is not C contiguous
+    ValueError: ndarray is not C...contiguous
     
     >>> test_dtype('b', inc1_byte)
     >>> test_dtype('B', inc1_ubyte)
@@ -137,7 +138,7 @@ try:
     >>> test_dtype('G', inc1_clongdouble_struct)
 
     >>> test_dtype(np.int, inc1_int_t)
-    >>> test_dtype(np.long, inc1_long_t)
+    >>> test_dtype(np.longlong, inc1_longlong_t)
     >>> test_dtype(np.float, inc1_float_t)
     >>> test_dtype(np.double, inc1_double_t)
     >>> test_dtype(np.intp, inc1_intp_t)
@@ -150,10 +151,10 @@ try:
 
     Endian tests:
     >>> test_dtype('%si' % my_endian, inc1_int)
-    >>> test_dtype('%si' % other_endian, inc1_int)
+    >>> test_dtype('%si' % other_endian, inc1_int)  #doctest: +ELLIPSIS
     Traceback (most recent call last):
        ...
-    ValueError: Non-native byte order not supported
+    ValueError: ...
     
 
 
@@ -181,15 +182,15 @@ try:
     array([(22, 23)], 
           dtype=[('f0', '|i1'), ('', '|V3'), ('f1', '!i4')])
 
-    >>> print(test_packed_align(np.zeros((1,), dtype=np.dtype('b,i', align=True))))
+    >>> print(test_packed_align(np.zeros((1,), dtype=np.dtype('b,i', align=True)))) #doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
-    ValueError: Buffer dtype mismatch; next field is at offset 4 but 1 expected
+    ValueError: ...
 
-    >>> print(test_unpacked_align(np.zeros((1,), dtype=np.dtype('b,i', align=False))))
+    >>> print(test_unpacked_align(np.zeros((1,), dtype=np.dtype('b,i', align=False)))) #doctest: +ELLIPSIS
     Traceback (most recent call last):
         ...
-    ValueError: Buffer dtype mismatch; next field is at offset 1 but 4 expected
+    ValueError: ...
 
 
     >>> test_good_cast()
@@ -209,6 +210,30 @@ try:
           dtype=[('x', '!f8'), ('y', '!f8')])
     
 """
+
+    if np.__version__ >= '1.6':
+        __doc__ += u"""
+        The following expose bugs in Numpy (versions prior to 2011-04-02):
+        
+        >>> print(test_partially_packed_align(np.zeros((1,), dtype=np.dtype([('a', 'b'), ('b', 'i'), ('sub', np.dtype('b,i')), ('c', 'i')], align=True))))
+        array([(22, 23, (24, 25), 26)], 
+              dtype=[('a', '|i1'), ('', '|V3'), ('b', '!i4'), ('sub', [('f0', '|i1'), ('f1', '!i4')]), ('', '|V3'), ('c', '!i4')])
+    
+        >>> print(test_partially_packed_align_2(np.zeros((1,), dtype=np.dtype([('a', 'b'), ('b', 'i'), ('c', 'b'), ('sub', np.dtype('b,i', align=True))]))))
+        array([(22, 23, 24, (27, 28))], 
+              dtype=[('a', '|i1'), ('b', '!i4'), ('c', '|i1'), ('sub', [('f0', '|i1'), ('', '|V3'), ('f1', '!i4')])])
+    
+        >>> print(test_partially_packed_align(np.zeros((1,), dtype=np.dtype([('a', 'b'), ('b', 'i'), ('sub', np.dtype('b,i')), ('c', 'i')], align=False)))) #doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        ValueError: ...
+    
+        >>> print(test_partially_packed_align_2(np.zeros((1,), dtype=np.dtype([('a', 'b'), ('b', 'i'), ('c', 'b'), ('sub', np.dtype('b,i', align=False))])))) #doctest: +ELLIPSIS
+        Traceback (most recent call last):
+            ...
+        ValueError: ...
+        """
+
 except:
     __doc__ = u""
 
@@ -235,17 +260,17 @@ def ndarray_str(arr):
     return unicode(arr).replace(u'\n\n', u'\n<_BLANKLINE_>\n')    
 
 def basic():
-    cdef object[int, ndim=2] buf = np.arange(10, dtype=b'i').reshape((2, 5))
+    cdef object[int, ndim=2] buf = np.arange(10, dtype='i').reshape((2, 5))
     print buf
     print buf[0, 2], buf[0, 0], buf[1, 4], buf[1, 0]
 
 def three_dim():
-    cdef object[double, ndim=3] buf = np.arange(24, dtype=b'd').reshape((3,2,4))
+    cdef object[double, ndim=3] buf = np.arange(24, dtype='d').reshape((3,2,4))
     print ndarray_str(buf)
     print buf[0, 1, 2], buf[0, 0, 0], buf[1, 1, 1], buf[1, 0, 0]
 
 def obj_array():
-    cdef object[object, ndim=1] buf = np.array([b"a", 1, {}])
+    cdef object[object, ndim=1] buf = np.array(["a", 1, {}])
     print buf
     print buf[0], buf[1], buf[2]
 
@@ -262,12 +287,12 @@ def put_range_long_1d(np.ndarray[long] arr):
         arr[i] = value
         value += 1
 
-def test_c_contig(np.ndarray[int, ndim=2, mode=b'c'] arr):
+def test_c_contig(np.ndarray[int, ndim=2, mode='c'] arr):
     cdef int i, j
     for i in range(arr.shape[0]):
         print u" ".join([unicode(arr[i, j]) for j in range(arr.shape[1])])
 
-def test_f_contig(np.ndarray[int, ndim=2, mode=b'fortran'] arr):
+def test_f_contig(np.ndarray[int, ndim=2, mode='fortran'] arr):
     cdef int i, j
     for i in range(arr.shape[0]):
         print u" ".join([unicode(arr[i, j]) for j in range(arr.shape[1])])
@@ -314,6 +339,7 @@ def inc1_object(np.ndarray[object] arr):
 
 def inc1_int_t(np.ndarray[np.int_t] arr):               arr[1] += 1
 def inc1_long_t(np.ndarray[np.long_t] arr):             arr[1] += 1
+def inc1_longlong_t(np.ndarray[np.longlong_t] arr):     arr[1] += 1
 def inc1_float_t(np.ndarray[np.float_t] arr):           arr[1] += 1
 def inc1_double_t(np.ndarray[np.double_t] arr):         arr[1] += 1
 def inc1_longdouble_t(np.ndarray[np.longdouble_t] arr): arr[1] += 1
@@ -330,7 +356,7 @@ def test_dtype(dtype, inc1):
                  "G", np.clongdouble):
         if sizeof(double) == sizeof(long double): # MSVC
             return
-    if dtype in (b'F', b'D', b'G'):
+    if dtype in ('F', 'D', 'G'):
         a = np.array([0, 10+10j], dtype=dtype)
         inc1(a)
         if a[1] != (11 + 11j): print u"failed!", a[1]
@@ -344,7 +370,7 @@ cdef struct DoubleInt:
 
 def test_recordarray():
     cdef object[DoubleInt] arr
-    arr = np.array([(5,5), (4, 6)], dtype=np.dtype(b'i,i'))
+    arr = np.array([(5,5), (4, 6)], dtype=np.dtype('i,i'))
     cdef DoubleInt rec
     rec = arr[0]
     if rec.x != 5: print u"failed"
@@ -384,13 +410,13 @@ def test_bad_nested_dtypes():
 
 def test_good_cast():
     # Check that a signed int can round-trip through casted unsigned int access
-    cdef np.ndarray[unsigned int, cast=True] arr = np.array([-100], dtype=b'i')
+    cdef np.ndarray[unsigned int, cast=True] arr = np.array([-100], dtype='i')
     cdef unsigned int data = arr[0]
     return -100 == <int>data
 
 def test_bad_cast():
     # This should raise an exception
-    cdef np.ndarray[int, cast=True] arr = np.array([1], dtype=b'b')
+    cdef np.ndarray[int, cast=True] arr = np.array([1], dtype='b')
 
 cdef packed struct PackedStruct:
     char a
@@ -400,6 +426,18 @@ cdef struct UnpackedStruct:
     char a
     int b
 
+cdef struct PartiallyPackedStruct:
+    char a
+    int b
+    PackedStruct sub
+    int c
+
+cdef packed struct PartiallyPackedStruct2:
+    char a
+    int b
+    char c
+    UnpackedStruct sub
+
 def test_packed_align(np.ndarray[PackedStruct] arr):
     arr[0].a = 22
     arr[0].b = 23
@@ -408,6 +446,22 @@ def test_packed_align(np.ndarray[PackedStruct] arr):
 def test_unpacked_align(np.ndarray[UnpackedStruct] arr):
     arr[0].a = 22
     arr[0].b = 23    
+    return repr(arr).replace('<', '!').replace('>', '!')
+
+def test_partially_packed_align(np.ndarray[PartiallyPackedStruct] arr):
+    arr[0].a = 22
+    arr[0].b = 23
+    arr[0].sub.a = 24
+    arr[0].sub.b = 25
+    arr[0].c = 26
+    return repr(arr).replace('<', '!').replace('>', '!')
+
+def test_partially_packed_align_2(np.ndarray[PartiallyPackedStruct2] arr):
+    arr[0].a = 22
+    arr[0].b = 23
+    arr[0].c = 24
+    arr[0].sub.a = 27
+    arr[0].sub.b = 28
     return repr(arr).replace('<', '!').replace('>', '!')
 
 def test_complextypes():

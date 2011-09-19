@@ -1,5 +1,5 @@
 #
-#   Pyrex - Builtin Definitions
+#   Builtin Definitions
 #
 
 from Symtab import BuiltinScope, StructOrUnionScope
@@ -7,6 +7,7 @@ from Code import UtilityCode
 from TypeSlots import Signature
 import PyrexTypes
 import Naming
+import Options
 
 
 # C-level implementations of builtin types, functions and methods
@@ -75,6 +76,54 @@ bad:
     return NULL;
 }
 """)
+
+globals_utility_code = UtilityCode(
+# This is a stub implementation until we have something more complete.
+# Currently, we only handle the most common case of a read-only dict
+# of Python names.  Supporting cdef names in the module and write
+# access requires a rewrite as a dedicated class.
+proto = """
+static PyObject* __Pyx_Globals(); /*proto*/
+""",
+impl = '''
+static PyObject* __Pyx_Globals() {
+    Py_ssize_t i;
+    /*PyObject *d;*/
+    PyObject *names = NULL;
+    PyObject *globals = PyObject_GetAttrString(%(MODULE)s, "__dict__");
+    if (!globals) {
+        PyErr_SetString(PyExc_TypeError,
+            "current module must have __dict__ attribute");
+        goto bad;
+    }
+    names = PyObject_Dir(%(MODULE)s);
+    if (!names)
+        goto bad;
+    for (i = 0; i < PyList_GET_SIZE(names); i++) {
+        PyObject* name = PyList_GET_ITEM(names, i);
+        if (!PyDict_Contains(globals, name)) {
+            PyObject* value = PyObject_GetAttr(%(MODULE)s, PyList_GET_ITEM(names, i));
+            if (!value)
+                goto bad;
+            if (PyDict_SetItem(globals, name, value) < 0) {
+                Py_DECREF(value);
+                goto bad;
+            }
+        }
+    }
+    Py_DECREF(names);
+    return globals;
+    /*
+    d = PyDictProxy_New(globals);
+    Py_DECREF(globals);
+    return d;
+    */
+bad:
+    Py_XDECREF(names);
+    Py_XDECREF(globals);
+    return NULL;
+}
+''' % {'MODULE' : Naming.module_cname})
 
 pyexec_utility_code = UtilityCode(
 proto = """
@@ -366,7 +415,7 @@ builtin_function_table = [
     BuiltinFunction('getattr3',   "OOO",  "O",     "__Pyx_GetAttr3",     "getattr",
                     utility_code = getattr3_utility_code), # Pyrex compatibility
     BuiltinFunction('hasattr',    "OO",   "b",     "PyObject_HasAttr"),
-    BuiltinFunction('hash',       "O",    "l",     "PyObject_Hash"),
+    BuiltinFunction('hash',       "O",    "h",     "PyObject_Hash"),
     #('hex',       "",     "",      ""),
     #('id',        "",     "",      ""),
     #('input',     "",     "",      ""),
@@ -411,6 +460,11 @@ builtin_function_table = [
     # Put in namespace append optimization.
     BuiltinFunction('__Pyx_PyObject_Append', "OO",  "O",     "__Pyx_PyObject_Append"),
 ]
+
+if not Options.old_style_globals:
+    builtin_function_table.append(
+        BuiltinFunction('globals',    "",     "O",     "__Pyx_Globals",
+                        utility_code = globals_utility_code))
 
 # Builtin types
 #  bool
@@ -458,9 +512,9 @@ builtin_types_table = [
 
     ("tuple",   "PyTuple_Type",    []),
 
-    ("list",    "PyList_Type",     [BuiltinMethod("insert",  "TzO",  "i", "PyList_Insert"),
-                                    BuiltinMethod("reverse", "T",    "i", "PyList_Reverse"),
-                                    BuiltinMethod("append",  "TO",   "i", "PyList_Append"),
+    ("list",    "PyList_Type",     [BuiltinMethod("insert",  "TzO",  "r", "PyList_Insert"),
+                                    BuiltinMethod("reverse", "T",    "r", "PyList_Reverse"),
+                                    BuiltinMethod("append",  "TO",   "r", "PyList_Append"),
                                     ]),
 
     ("dict",    "PyDict_Type",     [BuiltinMethod("items", "T",   "O", "PyDict_Items"),  # FIXME: Py3 mode?
@@ -474,10 +528,14 @@ builtin_types_table = [
                                     ]),
 #    ("file",    "PyFile_Type",     []),  # not in Py3
 
-    ("set",       "PySet_Type",    [BuiltinMethod("clear",   "T",  "i", "PySet_Clear"),
-                                    BuiltinMethod("discard", "TO", "i", "PySet_Discard"),
-                                    BuiltinMethod("add",     "TO", "i", "PySet_Add"),
-                                    BuiltinMethod("pop",     "T",  "O", "PySet_Pop")]),
+    ("set",       "PySet_Type",    [BuiltinMethod("clear",   "T",  "r", "PySet_Clear",
+                                                  utility_code = py23_set_utility_code),
+                                    BuiltinMethod("discard", "TO", "r", "PySet_Discard",
+                                                  utility_code = py23_set_utility_code),
+                                    BuiltinMethod("add",     "TO", "r", "PySet_Add",
+                                                  utility_code = py23_set_utility_code),
+                                    BuiltinMethod("pop",     "T",  "O", "PySet_Pop",
+                                                  utility_code = py23_set_utility_code)]),
     ("frozenset", "PyFrozenSet_Type", []),
 ]
 
@@ -503,6 +561,7 @@ builtin_structs_table = [
       ("shape",      PyrexTypes.c_py_ssize_t_ptr_type),
       ("strides",    PyrexTypes.c_py_ssize_t_ptr_type),
       ("suboffsets", PyrexTypes.c_py_ssize_t_ptr_type),
+      ("smalltable", PyrexTypes.CArrayType(PyrexTypes.c_py_ssize_t_type, 2)),
       ("internal",   PyrexTypes.c_void_ptr_type),
       ]),
     ('Py_complex', 'Py_complex',

@@ -16,6 +16,7 @@ from Cython.Compiler.Main import Context, CompilationOptions, default_options
 from Cython.Compiler.ParseTreeTransforms import CythonTransform, SkipDeclarations, AnalyseDeclarationsTransform
 from Cython.Compiler.TreeFragment import parse_from_strings
 from Cython.Build.Dependencies import strip_string_literals, cythonize
+from Cython.Compiler import Pipeline
 
 # A utility function to convert user-supplied ASCII strings to unicode.
 if sys.version_info[0] < 3:
@@ -43,7 +44,7 @@ def unbound_symbols(code, context=None):
         context = Context([], default_options)
     from Cython.Compiler.ParseTreeTransforms import AnalyseDeclarationsTransform
     tree = parse_from_strings('(tree fragment)', code)
-    for phase in context.create_pipeline(pxd=False):
+    for phase in Pipeline.create_pipeline(context, 'pyx'):
         if phase is None:
             continue
         tree = phase(tree)
@@ -103,6 +104,7 @@ def cython_inline(code,
     if get_type is None:
         get_type = lambda x: 'object'
     code = to_unicode(code)
+    orig_code = code
     code, literals = strip_string_literals(code)
     code = strip_common_indent(code)
     ctx = Context(cython_include_dirs, default_options)
@@ -127,7 +129,7 @@ def cython_inline(code,
     arg_names = kwds.keys()
     arg_names.sort()
     arg_sigs = tuple([(get_type(kwds[arg], ctx), arg) for arg in arg_names])
-    key = code, arg_sigs, sys.version_info, sys.executable, Cython.__version__
+    key = orig_code, arg_sigs, sys.version_info, sys.executable, Cython.__version__
     module_name = "_cython_inline_" + hashlib.md5(str(key).encode('utf-8')).hexdigest()
     try:
         if not os.path.exists(lib_dir):
@@ -151,7 +153,7 @@ def cython_inline(code,
                 if m.groups()[0] == 'numpy':
                     import numpy
                     c_include_dirs.append(numpy.get_include())
-                    cflags.append('-Wno-unused')
+                    # cflags.append('-Wno-unused')
         module_body, func_body = extract_func_code(code)
         params = ', '.join(['%s %s' % a for a in arg_sigs])
         module_code = """

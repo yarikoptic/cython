@@ -2,10 +2,13 @@
 #  Cython - Compilation-wide options and pragma declarations
 #
 
-cache_builtins = 1  #  Perform lookups on builtin names only once
+# Perform lookups on builtin names only once, at module initialisation
+# time.  This will prevent the module from getting imported if a
+# builtin name that it uses cannot be found during initialisation.
+cache_builtins = True
 
-embed_pos_in_docstring = 0
-gcc_branch_hints = 1
+embed_pos_in_docstring = False
+gcc_branch_hints = True
 
 pre_import = None
 docstrings = True
@@ -14,13 +17,22 @@ docstrings = True
 # 0: None, 1+: interned objects, 2+: cdef globals, 3+: types objects
 # Mostly for reducing noise for Valgrind, only executes at process exit
 # (when all memory will be reclaimed anyways).
-generate_cleanup_code = 0
+generate_cleanup_code = False
 
-annotate = 0
+annotate = False
 
 # This will abort the compilation on the first error occured rather than trying
 # to keep going and printing further error messages.
 fast_fail = False
+
+# Make all warnings into errors.
+warning_errors = False
+
+# Make unknown names an error.  Python raises a NameError when
+# encountering unknown names at runtime, whereas this option makes
+# them a compile time error.  If you want full Python compatibility,
+# you should disable this option and also 'cache_builtins'.
+error_on_unknown_names = True
 
 # This will convert statements of the form "for i in range(...)"
 # to "for i from ..." when i is a cdef'd integer type, and the direction
@@ -29,28 +41,31 @@ fast_fail = False
 # i to overflow. Specifically, if this option is set, an error will be
 # raised before the loop is entered, wheras without this option the loop
 # will execute until an overflowing value is encountered.
-convert_range = 1
+convert_range = True
 
 # Enable this to allow one to write your_module.foo = ... to overwrite the
 # definition if the cpdef function foo, at the cost of an extra dictionary
 # lookup on every call.
 # If this is 0 it simply creates a wrapper.
-lookup_module_cpdef = 0
-
-# This will set local variables to None rather than NULL which may cause
-# surpress what would be an UnboundLocalError in pure Python but eliminates
-# checking for NULL on every use, and can decref rather than xdecref at the end.
-# WARNING: This is a work in progress, may currently segfault.
-init_local_none = 1
+lookup_module_cpdef = False
 
 # Whether or not to embed the Python interpreter, for use in making a
-# standalone executable. This will provide a main() method which simply
+# standalone executable or calling from external libraries.
+# This will provide a method which initalizes the interpreter and
 # executes the body of this module.
-embed = False
+embed = None
 
 # Disables function redefinition, allowing all functions to be declared at
-# module creation time. For legacy code only. 
+# module creation time. For legacy code only, needed for some circular imports.
 disable_function_redefinition = False
+
+# In previous iterations of Cython, globals() gave the first non-Cython module
+# globals in the call stack.  Sage relies on this behavior for variable injection.
+old_style_globals = False
+
+# Allows cimporting from a pyx file without a pxd file.
+cimport_from_pyx = False
+
 
 
 # Declare compiler directives
@@ -77,9 +92,23 @@ directive_defaults = {
     'autotestdict.all': False,
     'language_level': 2,
     'fast_getattr': False, # Undocumented until we come up with a better way to handle this everywhere.
+    'py2_import': False, # For backward compatibility of Cython's source code
 
     'warn': None,
     'warn.undeclared': False,
+    'warn.unreachable': True,
+    'warn.maybe_uninitialized': False,
+    'warn.unreachable': True,
+    'warn.unused': False,
+    'warn.unused_arg': False,
+    'warn.unused_result': False,
+
+# remove unreachable code
+    'remove_unreachable': True,
+
+# control flow debug directives
+    'control_flow.dot_output': "", # Graphviz output filename
+    'control_flow.dot_annotate_defs': False, # Annotate definitions
 
 # test support
     'test_assert_path_exists' : [],
@@ -89,11 +118,21 @@ directive_defaults = {
     'binding': False,
 }
 
+# Extra warning directives
+extra_warnings = {
+    'warn.maybe_uninitialized': True,
+    'warn.unreachable': True,
+    'warn.unused': True,
+}
+
 # Override types possibilities above, if needed
 directive_types = {
     'final' : bool,  # final cdef classes and methods
     'internal' : bool,  # cdef class visibility in the module dict
     'infer_types' : bool, # values can be True/None/False
+    'cfunc' : None, # decorators do not take directive value
+    'ccall' : None,
+    'cclass' : None,
     }
 
 for key, val in directive_defaults.items():

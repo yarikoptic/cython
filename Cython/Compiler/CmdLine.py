@@ -34,10 +34,12 @@ Options:
   -a, --annotate                 Produce a colorized HTML version of the source.
   --line-directives              Produce #line directives pointing to the .pyx source
   --cplus                        Output a C++ rather than C file.
-  --embed                        Generate a main() function that embeds the Python interpreter.
+  --embed[=<method_name>]        Generate a main() function that embeds the Python interpreter.
   -2                             Compile based on Python-2 syntax and code semantics.
   -3                             Compile based on Python-3 syntax and code semantics.
   --fast-fail                    Abort the compilation on the first error
+  --warning-error, -Werror       Make all warnings into errors
+  --warning-extra, -Wextra       Enable extra warnings
   -X, --directive <name>=<value>[,<name=value,...] Overrides a compiler directive
 """
 
@@ -85,7 +87,9 @@ def parse_command_line(args):
             elif option in ("-+", "--cplus"):
                 options.cplus = 1
             elif option == "--embed":
-                Options.embed = True
+                Options.embed = "main"
+            elif option.startswith("--embed="):
+                Options.embed = options[8:]
             elif option.startswith("-I"):
                 options.include_path.append(get_param(option))
             elif option == "--include-dir":
@@ -127,12 +131,22 @@ def parse_command_line(args):
                 options.language_level = 3
             elif option == "--fast-fail":
                 Options.fast_fail = True
+            elif option in ('-Werror', '--warning-errors'):
+                Options.warning_errors = True
+            elif option in ('-Wextra', '--warning-extra'):
+                options.compiler_directives.update(Options.extra_warnings)
             elif option == "--disable-function-redefinition":
                 Options.disable_function_redefinition = True
-            elif option in ("-X", "--directive"):
+            elif option == "--old-style-globals":
+                Options.old_style_globals = True
+            elif option == "--directive" or option.startswith('-X'):
+                if option.startswith('-X') and option[2:].strip():
+                    x_args = option[2:]
+                else:
+                    x_args = pop_arg()
                 try:
                     options.compiler_directives = Options.parse_directive_list(
-                        pop_arg(), relaxed_bool=True,
+                        x_args, relaxed_bool=True,
                         current_settings=options.compiler_directives)
                 except ValueError, e:
                     sys.stderr.write("Error in compiler directive: %s\n" % e.args[0])
@@ -152,15 +166,7 @@ def parse_command_line(args):
                 sys.stderr.write("Unknown compiler flag: %s\n" % option)
                 sys.exit(1)
         else:
-            arg = pop_arg()
-            if arg.endswith(".pyx"):
-                sources.append(arg)
-            elif arg.endswith(".py"):
-                # maybe do some other stuff, but this should work for now
-                sources.append(arg)
-            else:
-                sys.stderr.write(
-                    "cython: %s: Unknown filename suffix\n" % arg)
+            sources.append(pop_arg())
     if options.use_listing_file and len(sources) > 1:
         sys.stderr.write(
             "cython: Only one source file allowed when using -o\n")

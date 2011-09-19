@@ -1,5 +1,5 @@
 #
-#   Pyrex - Module parse tree node
+#   Module parse tree node
 #
 
 import cython
@@ -52,6 +52,25 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
     child_attrs = ["body"]
     directives = None
 
+    def merge_in(self, tree, scope, merge_scope=False):
+        # Merges in the contents of another tree, and possibly scope. With the
+        # current implementation below, this must be done right prior
+        # to code generation.
+        #
+        # Note: This way of doing it seems strange -- I believe the
+        # right concept is to split ModuleNode into a ModuleNode and a
+        # CodeGenerator, and tell that CodeGenerator to generate code
+        # from multiple sources.
+        assert isinstance(self.body, Nodes.StatListNode)
+        if isinstance(tree, Nodes.StatListNode):
+            self.body.stats.extend(tree.stats)
+        else:
+            self.body.stats.append(tree)
+        selfscope = self.scope
+        selfscope.utility_code_list.extend(scope.utility_code_list)
+        if merge_scope:
+            selfscope.merge_in(scope)
+
     def analyse_declarations(self, env):
         if Options.embed_pos_in_docstring:
             env.doc = EncodedString(u'File: %s (starting at line %s)' % Nodes.relative_position(self.pos))
@@ -96,14 +115,16 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 f.close()
 
     def generate_h_code(self, env, options, result):
-        def h_entries(entries, pxd = 0):
+        def h_entries(entries, api=0, pxd=0):
             return [entry for entry in entries
-                if entry.visibility == 'public' or pxd and entry.defined_in_pxd]
-        h_types = h_entries(env.type_entries)
+                    if ((entry.visibility == 'public') or
+                        (api and entry.api) or
+                        (pxd and entry.defined_in_pxd))]
+        h_types = h_entries(env.type_entries, api=1)
         h_vars = h_entries(env.var_entries)
         h_funcs = h_entries(env.cfunc_entries)
         h_extension_types = h_entries(env.c_class_entries)
-        if h_types or h_vars or h_funcs or h_extension_types:
+        if (h_types or  h_vars or h_funcs or h_extension_types):
             result.h_file = replace_suffix(result.c_file, ".h")
             h_code = Code.CCodeWriter()
             Code.GlobalState(h_code)
@@ -112,32 +133,40 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 i_code = Code.PyrexCodeWriter(result.i_file)
             else:
                 i_code = None
-            guard = Naming.h_guard_prefix + env.qualified_name.replace(".", "__")
-            h_code.put_h_guard(guard)
-            self.generate_extern_c_macro_definition(h_code)
+
+            h_guard = Naming.h_guard_prefix + self.api_name(env)
+            h_code.put_h_guard(h_guard)
+            h_code.putln("")
             self.generate_type_header_code(h_types, h_code)
             h_code.putln("")
-            h_code.putln("#ifndef %s" % Naming.api_guard_prefix + self.api_name(env))
-            if h_vars:
-                h_code.putln("")
-                for entry in h_vars:
-                    self.generate_public_declaration(entry, h_code, i_code)
-            if h_funcs:
-                h_code.putln("")
-                for entry in h_funcs:
-                    self.generate_public_declaration(entry, h_code, i_code)
+            api_guard = Naming.api_guard_prefix + self.api_name(env)
+            h_code.putln("#ifndef %s" % api_guard)
+            h_code.putln("")
+            self.generate_extern_c_macro_definition(h_code)
             if h_extension_types:
                 h_code.putln("")
                 for entry in h_extension_types:
                     self.generate_cclass_header_code(entry.type, h_code)
                     if i_code:
                         self.generate_cclass_include_code(entry.type, i_code)
+            if h_funcs:
+                h_code.putln("")
+                for entry in h_funcs:
+                    self.generate_public_declaration(entry, h_code, i_code)
+            if h_vars:
+                h_code.putln("")
+                for entry in h_vars:
+                    self.generate_public_declaration(entry, h_code, i_code)
             h_code.putln("")
-            h_code.putln("#endif")
+            h_code.putln("#endif /* !%s */" % api_guard)
             h_code.putln("")
+            h_code.putln("#if PY_MAJOR_VERSION < 3")
             h_code.putln("PyMODINIT_FUNC init%s(void);" % env.module_name)
-            h_code.putln("")
+            h_code.putln("#else")
+            h_code.putln("PyMODINIT_FUNC PyInit_%s(void);" % env.module_name)
             h_code.putln("#endif")
+            h_code.putln("")
+            h_code.putln("#endif /* !%s */" % h_guard)
 
             f = open_new_file(result.h_file)
             try:
@@ -158,63 +187,68 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         return env.qualified_name.replace(".", "__")
 
     def generate_api_code(self, env, result):
-        api_funcs = []
-        public_extension_types = []
-        has_api_extension_types = 0
-        for entry in env.cfunc_entries:
-            if entry.api:
-                api_funcs.append(entry)
-        for entry in env.c_class_entries:
-            if entry.visibility == 'public':
-                public_extension_types.append(entry)
-            if entry.api:
-                has_api_extension_types = 1
-        if api_funcs or has_api_extension_types:
+        def api_entries(entries, pxd=0):
+            return [entry for entry in entries
+                    if entry.api or (pxd and entry.defined_in_pxd)]
+        api_vars = api_entries(env.var_entries)
+        api_funcs = api_entries(env.cfunc_entries)
+        api_extension_types = api_entries(env.c_class_entries)
+        if api_vars or api_funcs or api_extension_types:
             result.api_file = replace_suffix(result.c_file, "_api.h")
             h_code = Code.CCodeWriter()
             Code.GlobalState(h_code)
-            name = self.api_name(env)
-            guard = Naming.api_guard_prefix + name
-            h_code.put_h_guard(guard)
+            api_guard = Naming.api_guard_prefix + self.api_name(env)
+            h_code.put_h_guard(api_guard)
             h_code.putln('#include "Python.h"')
             if result.h_file:
                 h_code.putln('#include "%s"' % os.path.basename(result.h_file))
-            for entry in public_extension_types:
-                type = entry.type
+            if api_extension_types:
                 h_code.putln("")
-                h_code.putln("static PyTypeObject *%s;" % type.typeptr_cname)
-                h_code.putln("#define %s (*%s)" % (
-                    type.typeobj_cname, type.typeptr_cname))
+                for entry in api_extension_types:
+                    type = entry.type
+                    h_code.putln("static PyTypeObject *%s = 0;" % type.typeptr_cname)
+                    h_code.putln("#define %s (*%s)" % (
+                        type.typeobj_cname, type.typeptr_cname))
             if api_funcs:
                 h_code.putln("")
                 for entry in api_funcs:
                     type = CPtrType(entry.type)
-                    h_code.putln("static %s;" % type.declaration_code(entry.cname))
-            h_code.putln("")
-            h_code.put_h_guard(Naming.api_func_guard + "import_module")
+                    cname = env.mangle(Naming.func_prefix, entry.name)
+                    h_code.putln("static %s = 0;" % type.declaration_code(cname))
+                    h_code.putln("#define %s %s" % (entry.name, cname))
+            if api_vars:
+                h_code.putln("")
+                for entry in api_vars:
+                    type = CPtrType(entry.type)
+                    cname = env.mangle(Naming.varptr_prefix, entry.name)
+                    h_code.putln("static %s = 0;" %  type.declaration_code(cname))
+                    h_code.putln("#define %s (*%s)" % (entry.name, cname))
             h_code.put(import_module_utility_code.impl)
-            h_code.putln("")
-            h_code.putln("#endif")
+            if api_vars:
+                h_code.put(voidptr_import_utility_code.impl)
             if api_funcs:
-                h_code.putln("")
                 h_code.put(function_import_utility_code.impl)
-            if public_extension_types:
-                h_code.putln("")
+            if api_extension_types:
                 h_code.put(type_import_utility_code.impl)
             h_code.putln("")
-            h_code.putln("static int import_%s(void) {" % name)
+            h_code.putln("static int import_%s(void) {" % self.api_name(env))
             h_code.putln("PyObject *module = 0;")
             h_code.putln('module = __Pyx_ImportModule("%s");' % env.qualified_name)
             h_code.putln("if (!module) goto bad;")
             for entry in api_funcs:
+                cname = env.mangle(Naming.func_prefix, entry.name)
                 sig = entry.type.signature_string()
                 h_code.putln(
-                    'if (__Pyx_ImportFunction(module, "%s", (void (**)(void))&%s, "%s") < 0) goto bad;' % (
-                        entry.name,
-                        entry.cname,
-                        sig))
+                    'if (__Pyx_ImportFunction(module, "%s", (void (**)(void))&%s, "%s") < 0) goto bad;'
+                    % (entry.name, cname, sig))
+            for entry in api_vars:
+                cname = env.mangle(Naming.varptr_prefix, entry.name)
+                sig = entry.type.declaration_code("")
+                h_code.putln(
+                    'if (__Pyx_ImportVoidPtr(module, "%s", (void **)&%s, "%s") < 0) goto bad;'
+                    % (entry.name, cname, sig))
             h_code.putln("Py_DECREF(module); module = 0;")
-            for entry in public_extension_types:
+            for entry in api_extension_types:
                 self.generate_type_import_call(
                     entry.type, h_code,
                     "if (!%s) goto bad;" % entry.type.typeptr_cname)
@@ -224,7 +258,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             h_code.putln("return -1;")
             h_code.putln("}")
             h_code.putln("")
-            h_code.putln("#endif")
+            h_code.putln("#endif /* !%s */" % api_guard)
 
             f = open_new_file(result.api_file)
             try:
@@ -233,8 +267,9 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 f.close()
 
     def generate_cclass_header_code(self, type, h_code):
-        h_code.putln("%s DL_IMPORT(PyTypeObject) %s;" % (
+        h_code.putln("%s %s %s;" % (
             Naming.extern_c_macro,
+            PyrexTypes.public_decl("PyTypeObject", "DL_IMPORT"),
             type.typeobj_cname))
 
     def generate_cclass_include_code(self, type, i_code):
@@ -272,15 +307,16 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
 
         code = globalstate['before_global_var']
         code.putln('#define __Pyx_MODULE_NAME "%s"' % self.full_module_name)
-        code.putln("static int %s%s = 0;" % (Naming.module_is_main, self.full_module_name.replace('.', '__')))
+        code.putln("int %s%s = 0;" % (Naming.module_is_main, self.full_module_name.replace('.', '__')))
         code.putln("")
-        code.putln("/* Implementation of %s */" % env.qualified_name)
+        code.putln("/* Implementation of '%s' */" % env.qualified_name)
 
         code = globalstate['all_the_rest']
 
         self.generate_cached_builtins_decls(env, code)
         self.generate_lambda_definitions(env, code)
-        # generate normal function definitions
+        # generate normal variable and function definitions
+        self.generate_variable_definitions(env, code)
         self.body.generate_function_definitions(env, code)
         code.mark_pos(None)
         self.generate_typeobj_definitions(env, code)
@@ -400,6 +436,9 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         return (vtab_list, vtabslot_list)
 
     def generate_type_definitions(self, env, modules, vtab_list, vtabslot_list, code):
+        # TODO: Why are these separated out?
+        for entry in vtabslot_list:
+            self.generate_objstruct_predeclaration(entry.type, code)
         vtabslot_entries = set(vtabslot_list)
         for module in modules:
             definition = module is env
@@ -410,39 +449,31 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 for entry in module.type_entries:
                     if entry.defined_in_pxd:
                         type_entries.append(entry)
-            for entry in type_entries:
-                if not entry.in_cinclude:
-                    #print "generate_type_header_code:", entry.name, repr(entry.type) ###
-                    type = entry.type
-                    if type.is_typedef: # Must test this first!
-                        self.generate_typedef(entry, code)
-                    elif type.is_struct_or_union:
-                        self.generate_struct_union_definition(entry, code)
-                    elif type.is_enum:
-                        self.generate_enum_definition(entry, code)
-                    elif type.is_extension_type and entry not in vtabslot_entries:
-                        self.generate_objstruct_definition(type, code)
+            type_entries = [t for t in type_entries if t not in vtabslot_entries]
+            self.generate_type_header_code(type_entries, code)
         for entry in vtabslot_list:
             self.generate_objstruct_definition(entry.type, code)
+            self.generate_typeobj_predeclaration(entry, code)
         for entry in vtab_list:
-            self.generate_typeobject_predeclaration(entry, code)
+            self.generate_typeobj_predeclaration(entry, code)
             self.generate_exttype_vtable_struct(entry, code)
             self.generate_exttype_vtabptr_declaration(entry, code)
 
     def generate_declarations_for_modules(self, env, modules, globalstate):
         typecode = globalstate['type_declarations']
         typecode.putln("")
-        typecode.putln("/* Type declarations */")
+        typecode.putln("/*--- Type declarations ---*/")
         vtab_list, vtabslot_list = self.sort_type_hierarchy(modules, env)
         self.generate_type_definitions(
             env, modules, vtab_list, vtabslot_list, typecode)
         modulecode = globalstate['module_declarations']
         for module in modules:
             defined_here = module is env
-            modulecode.putln("/* Module declarations from %s */" %
-                             module.qualified_name)
-            self.generate_global_declarations(module, modulecode, defined_here)
-            self.generate_cfunction_predeclarations(module, modulecode, defined_here)
+            modulecode.putln("")
+            modulecode.putln("/* Module declarations from '%s' */" % module.qualified_name)
+            self.generate_c_class_declarations(module, modulecode, defined_here)
+            self.generate_cvariable_declarations(module, modulecode, defined_here)
+            self.generate_cfunction_declarations(module, modulecode, defined_here)
 
     def generate_module_preamble(self, env, cimported_modules, code):
         code.putln("/* Generated by Cython %s on %s */" % (
@@ -497,7 +528,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
   #define PY_SSIZE_T_MIN INT_MIN
   #define PY_FORMAT_SIZE_T \"\"
   #define PyInt_FromSsize_t(z) PyInt_FromLong(z)
-  #define PyInt_AsSsize_t(o)   PyInt_AsLong(o)
+  #define PyInt_AsSsize_t(o)   __Pyx_PyInt_AsInt(o)
   #define PyNumber_Index(o)    PyNumber_Int(o)
   #define PyIndex_Check(o)     PyNumber_Check(o)
   #define PyErr_WarnEx(category, message, stacklevel) PyErr_Warn(category, message)
@@ -610,6 +641,15 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
   #define PyBoolObject                 PyLongObject
 #endif
 
+#if PY_VERSION_HEX < 0x03020000
+  typedef long Py_hash_t;
+  #define __Pyx_PyInt_FromHash_t PyInt_FromLong
+  #define __Pyx_PyInt_AsHash_t   PyInt_AsLong
+#else
+  #define __Pyx_PyInt_FromHash_t PyInt_FromSsize_t
+  #define __Pyx_PyInt_AsHash_t   PyInt_AsSsize_t
+#endif
+
 """)
 
         code.put("""
@@ -672,10 +712,13 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln("")
         self.generate_extern_c_macro_definition(code)
         code.putln("")
+
         code.putln("#if defined(WIN32) || defined(MS_WINDOWS)")
         code.putln("#define _USE_MATH_DEFINES")
         code.putln("#endif")
         code.putln("#include <math.h>")
+
+        code.putln("#define %s" % Naming.h_guard_prefix + self.api_name(env))
         code.putln("#define %s" % Naming.api_guard_prefix + self.api_name(env))
         self.generate_includes(env, cimported_modules, code)
         code.putln("")
@@ -683,6 +726,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln("#define CYTHON_WITHOUT_ASSERTIONS")
         code.putln("#endif")
         code.putln("")
+
         if env.directives['ccomplex']:
             code.putln("")
             code.putln("#if !defined(CYTHON_CCOMPLEX)")
@@ -712,10 +756,12 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
 
     def generate_extern_c_macro_definition(self, code):
         name = Naming.extern_c_macro
-        code.putln("#ifdef __cplusplus")
-        code.putln('#define %s extern "C"' % name)
-        code.putln("#else")
-        code.putln("#define %s extern" % name)
+        code.putln("#ifndef %s" % name)
+        code.putln("  #ifdef __cplusplus")
+        code.putln('    #define %s extern "C"' % name)
+        code.putln("  #else")
+        code.putln("    #define %s extern" % name)
+        code.putln("  #endif")
         code.putln("#endif")
 
     def generate_includes(self, env, cimported_modules, code):
@@ -726,6 +772,8 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 code.putln('#include %s' % byte_decoded_filenname)
             else:
                 code.putln('#include "%s"' % byte_decoded_filenname)
+
+        code.putln_openmp("#include <omp.h>")
 
     def generate_filename_table(self, code):
         code.putln("")
@@ -746,17 +794,28 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
     def generate_type_header_code(self, type_entries, code):
         # Generate definitions of structs/unions/enums/typedefs/objstructs.
         #self.generate_gcc33_hack(env, code) # Is this still needed?
-        #for entry in env.type_entries:
+        # Forward declarations
+        for entry in type_entries:
+            if not entry.in_cinclude:
+                #print "generate_type_header_code:", entry.name, repr(entry.type) ###
+                type = entry.type
+                if type.is_typedef: # Must test this first!
+                    pass
+                elif type.is_struct_or_union:
+                    self.generate_struct_union_predeclaration(entry, code)
+                elif type.is_extension_type:
+                    self.generate_objstruct_predeclaration(type, code)
+        # Actual declarations
         for entry in type_entries:
             if not entry.in_cinclude:
                 #print "generate_type_header_code:", entry.name, repr(entry.type) ###
                 type = entry.type
                 if type.is_typedef: # Must test this first!
                     self.generate_typedef(entry, code)
-                elif type.is_struct_or_union:
-                    self.generate_struct_union_definition(entry, code)
                 elif type.is_enum:
                     self.generate_enum_definition(entry, code)
+                elif type.is_struct_or_union:
+                    self.generate_struct_union_definition(entry, code)
                 elif type.is_extension_type:
                     self.generate_objstruct_definition(type, code)
 
@@ -777,19 +836,30 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
     def generate_typedef(self, entry, code):
         base_type = entry.type.typedef_base_type
         if base_type.is_numeric:
-            writer = code.globalstate['numeric_typedefs']
+            try:
+                writer = code.globalstate['numeric_typedefs']
+            except KeyError:
+                writer = code
         else:
             writer = code
-        writer.putln("")
+        writer.mark_pos(entry.pos)
         writer.putln("typedef %s;" % base_type.declaration_code(entry.cname))
 
-    def sue_header_footer(self, type, kind, name):
+    def sue_predeclaration(self, type, kind, name):
         if type.typedef_flag:
-            header = "typedef %s {" % kind
-            footer = "} %s;" % name
+            return "%s %s;\ntypedef %s %s %s;" % (
+                kind, name,
+                kind, name, name)
         else:
-            header = "%s %s {" % (kind, name)
-            footer = "};"
+            return "%s %s;" % (kind, name)
+
+    def generate_struct_union_predeclaration(self, entry, code):
+        type = entry.type
+        code.putln(self.sue_predeclaration(type, type.kind, type.cname))
+
+    def sue_header_footer(self, type, kind, name):
+        header = "%s %s {" % (kind, name)
+        footer = "};"
         return header, footer
 
     def generate_struct_union_definition(self, entry, code):
@@ -804,7 +874,6 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 code.globalstate.use_utility_code(packed_struct_utility_code)
             header, footer = \
                 self.sue_header_footer(type, kind, type.cname)
-            code.putln("")
             if packed:
                 code.putln("#if defined(__SUNPRO_C)")
                 code.putln("  #pragma pack(1)")
@@ -835,7 +904,6 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         name = entry.cname or entry.name or ""
         header, footer = \
             self.sue_header_footer(type, "enum", name)
-        code.putln("")
         code.putln(header)
         enum_values = entry.enum_values
         if not enum_values:
@@ -860,24 +928,32 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                     value_code += ","
                 code.putln(value_code)
         code.putln(footer)
+        if entry.type.typedef_flag:
+            # Not pre-declared.
+            code.putln("typedef enum %s %s;" % (name, name))
 
-    def generate_typeobject_predeclaration(self, entry, code):
+    def generate_typeobj_predeclaration(self, entry, code):
         code.putln("")
         name = entry.type.typeobj_cname
         if name:
             if entry.visibility == 'extern' and not entry.in_cinclude:
-                code.putln("%s DL_IMPORT(PyTypeObject) %s;" % (
+                code.putln("%s %s %s;" % (
                     Naming.extern_c_macro,
+                    PyrexTypes.public_decl("PyTypeObject", "DL_IMPORT"),
                     name))
             elif entry.visibility == 'public':
-                code.putln("%s DL_EXPORT(PyTypeObject) %s;" % (
+                code.putln("%s %s %s;" % (
                     Naming.extern_c_macro,
+                    PyrexTypes.public_decl("PyTypeObject", "DL_EXPORT"),
                     name))
             # ??? Do we really need the rest of this? ???
             #else:
-            #    code.putln("staticforward PyTypeObject %s;" % name)
+            #    code.putln("static PyTypeObject %s;" % name)
 
     def generate_exttype_vtable_struct(self, entry, code):
+        if not entry.used:
+            return
+
         code.mark_pos(entry.pos)
         # Generate struct declaration for an extension type's vtable.
         type = entry.type
@@ -894,11 +970,14 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             for method_entry in scope.cfunc_entries:
                 if not method_entry.is_inherited:
                     code.putln(
-                        "%s;" % method_entry.type.declaration_code("(*%s)" % method_entry.name))
+                        "%s;" % method_entry.type.declaration_code("(*%s)" % method_entry.cname))
             code.putln(
                 "};")
 
     def generate_exttype_vtabptr_declaration(self, entry, code):
+        if not entry.used:
+            return
+
         code.mark_pos(entry.pos)
         # Generate declaration of pointer to an extension type's vtable.
         type = entry.type
@@ -906,6 +985,11 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             code.putln("static struct %s *%s;" % (
                 type.vtabstruct_cname,
                 type.vtabptr_cname))
+
+    def generate_objstruct_predeclaration(self, type, code):
+        if not type.scope:
+            return
+        code.putln(self.sue_predeclaration(type, "struct", type.objstruct_cname))
 
     def generate_objstruct_definition(self, type, code):
         code.mark_pos(type.pos)
@@ -915,7 +999,6 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
             return # Forward declared but never defined
         header, footer = \
             self.sue_header_footer(type, "struct", type.objstruct_cname)
-        code.putln("")
         code.putln(header)
         base_type = type.base_type
         if base_type:
@@ -933,51 +1016,85 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                     type.vtabstruct_cname,
                     type.vtabslot_cname))
         for attr in type.scope.var_entries:
+            if attr.is_declared_generic:
+                attr_type = py_object_type
+            else:
+                attr_type = attr.type
             code.putln(
                 "%s;" %
-                    attr.type.declaration_code(attr.cname))
+                    attr_type.declaration_code(attr.cname))
         code.putln(footer)
         if type.objtypedef_cname is not None:
             # Only for exposing public typedef name.
             code.putln("typedef struct %s %s;" % (type.objstruct_cname, type.objtypedef_cname))
 
-    def generate_global_declarations(self, env, code, definition):
-        code.putln("")
+    def generate_c_class_declarations(self, env, code, definition):
         for entry in env.c_class_entries:
             if definition or entry.defined_in_pxd:
                 code.putln("static PyTypeObject *%s = 0;" %
                     entry.type.typeptr_cname)
-        code.put_var_declarations(env.var_entries, static = 1,
-            dll_linkage = "DL_EXPORT", definition = definition)
 
-    def generate_cfunction_predeclarations(self, env, code, definition):
-        for entry in env.cfunc_entries:
-            if entry.inline_func_in_pxd or (not entry.in_cinclude and (definition
-                    or entry.defined_in_pxd or entry.visibility == 'extern')):
-                if entry.visibility in ('public', 'extern'):
+    def generate_cvariable_declarations(self, env, code, definition):
+        if env.is_cython_builtin:
+            return
+        for entry in env.var_entries:
+            if (entry.in_cinclude or entry.in_closure or
+                (entry.visibility == 'private' and
+                 not (entry.defined_in_pxd or entry.used))):
+                continue
+
+            storage_class = None
+            dll_linkage = None
+            cname = None
+            init = None
+
+            if entry.visibility == 'extern':
+                storage_class = Naming.extern_c_macro
+                dll_linkage = "DL_IMPORT"
+            elif entry.visibility == 'public':
+                storage_class = Naming.extern_c_macro
+                if definition:
                     dll_linkage = "DL_EXPORT"
                 else:
-                    dll_linkage = None
-                type = entry.type
-                if not definition and entry.defined_in_pxd:
-                    type = CPtrType(type)
-                header = type.declaration_code(entry.cname,
-                    dll_linkage = dll_linkage)
-                if entry.visibility == 'private':
-                    storage_class = "static "
-                elif entry.visibility == 'public':
-                    storage_class = ""
-                else:
-                    storage_class = "%s " % Naming.extern_c_macro
-                if entry.func_modifiers:
-                    modifiers = '%s ' % ' '.join([
-                            modifier.upper() for modifier in entry.func_modifiers])
-                else:
-                    modifiers = ''
-                code.putln("%s%s%s; /*proto*/" % (
-                    storage_class,
-                    modifiers,
-                    header))
+                    dll_linkage = "DL_IMPORT"
+            elif entry.visibility == 'private':
+                storage_class = "static"
+                dll_linkage = None
+                if entry.init is not None:
+                    init =  entry.type.literal_code(entry.init)
+            type = entry.type
+            cname = entry.cname
+
+            if entry.defined_in_pxd and not definition:
+                storage_class = "static"
+                dll_linkage = None
+                type = CPtrType(type)
+                cname = env.mangle(Naming.varptr_prefix, entry.name)
+                init = 0
+
+            if storage_class:
+                code.put("%s " % storage_class)
+            code.put(type.declaration_code(
+                cname, dll_linkage = dll_linkage))
+            if init is not None:
+                code.put_safe(" = %s" % init)
+            code.putln(";")
+            if entry.cname != cname:
+                code.putln("#define %s (*%s)" % (entry.cname, cname))
+
+    def generate_cfunction_declarations(self, env, code, definition):
+        for entry in env.cfunc_entries:
+            generate_cfunction_declaration(entry, env, code, definition)
+
+    def generate_variable_definitions(self, env, code):
+        for entry in env.var_entries:
+            if (not entry.in_cinclude and
+                entry.visibility == "public"):
+                code.put(entry.type.declaration_code(entry.cname))
+                if entry.init is not None:
+                    init =  entry.type.literal_code(entry.init)
+                    code.put_safe(" = %s" % init)
+                code.putln(";")
 
     def generate_typeobj_definitions(self, env, code):
         full_module_name = env.qualified_name
@@ -1232,7 +1349,10 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         for entry in py_attrs:
             name = "p->%s" % entry.cname
             code.putln("tmp = ((PyObject*)%s);" % name)
-            code.put_init_to_py_none(name, entry.type, nanny=False)
+            if entry.is_declared_generic:
+                code.put_init_to_py_none(name, py_object_type, nanny=False)
+            else:
+                code.put_init_to_py_none(name, entry.type, nanny=False)
             code.putln("Py_XDECREF(tmp);")
         code.putln(
             "return 0;")
@@ -1713,7 +1833,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         if code.label_used(code.error_label):
             code.put_label(code.error_label)
             # This helps locate the offending name.
-            code.putln('__Pyx_AddTraceback("%s");' % self.full_module_name);
+            code.put_add_traceback(self.full_module_name)
         code.error_label = old_error_label
         code.putln("bad:")
         code.putln("return -1;")
@@ -1736,8 +1856,8 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln("{")
         tempdecl_code = code.insertion_point()
 
+        code.put_declare_refcount_context()
         code.putln("#if CYTHON_REFNANNY")
-        code.putln("void* __pyx_refnanny = NULL;")
         code.putln("__Pyx_RefNanny = __Pyx_RefNannyImportAPI(\"refnanny\");")
         code.putln("if (!__Pyx_RefNanny) {")
         code.putln("  PyErr_Clear();")
@@ -1745,8 +1865,11 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln("  if (!__Pyx_RefNanny)")
         code.putln("      Py_FatalError(\"failed to import 'refnanny' module\");")
         code.putln("}")
-        code.putln("__pyx_refnanny = __Pyx_RefNanny->SetupContext(\"%s\", __LINE__, __FILE__);"% header3)
         code.putln("#endif")
+        code.put_setup_refcount_context(header3)
+
+        env.use_utility_code(check_binary_version_utility_code)
+        code.putln("if ( __Pyx_check_binary_version() < 0) %s" % code.error_goto(self.pos))
 
         code.putln("%s = PyTuple_New(0); %s" % (Naming.empty_tuple, code.error_goto_if_null(Naming.empty_tuple, self.pos)));
         code.putln("%s = PyBytes_FromStringAndSize(\"\", 0); %s" % (Naming.empty_bytes, code.error_goto_if_null(Naming.empty_bytes, self.pos)));
@@ -1791,6 +1914,9 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln("/*--- Global init code ---*/")
         self.generate_global_init_code(env, code)
 
+        code.putln("/*--- Variable export code ---*/")
+        self.generate_c_variable_export_code(env, code)
+
         code.putln("/*--- Function export code ---*/")
         self.generate_c_function_export_code(env, code)
 
@@ -1800,6 +1926,10 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         code.putln("/*--- Type import code ---*/")
         for module in imported_modules:
             self.generate_type_import_code_for_module(module, env, code)
+
+        code.putln("/*--- Variable import code ---*/")
+        for module in imported_modules:
+            self.generate_c_variable_import_code_for_module(module, env, code)
 
         code.putln("/*--- Function import code ---*/")
         for module in imported_modules:
@@ -1820,7 +1950,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         for cname, type in code.funcstate.all_managed_temps():
             code.put_xdecref(cname, type)
         code.putln('if (%s) {' % env.module_cname)
-        code.putln('__Pyx_AddTraceback("init %s");' % env.qualified_name)
+        code.put_add_traceback("init %s" % env.qualified_name)
         env.use_utility_code(Nodes.traceback_utility_code)
         code.put_decref_clear(env.module_cname, py_object_type, nanny=False)
         code.putln('} else if (!PyErr_Occurred()) {')
@@ -1888,7 +2018,16 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
 
     def generate_main_method(self, env, code):
         module_is_main = "%s%s" % (Naming.module_is_main, self.full_module_name.replace('.', '__'))
-        code.globalstate.use_utility_code(main_method.specialize(module_name=env.module_name, module_is_main=module_is_main))
+        if Options.embed == "main":
+            wmain = "wmain"
+        else:
+            wmain = Options.embed
+        code.globalstate.use_utility_code(
+            main_method.specialize(
+                module_name = env.module_name,
+                module_is_main = module_is_main,
+                main_method = Options.embed,
+                wmain_method = wmain))
 
     def generate_pymoduledef_struct(self, env, code):
         if env.doc:
@@ -1969,11 +2108,33 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 if entry.type.is_pyobject and entry.used:
                     code.put_init_var_to_py_none(entry, nanny=False)
 
+    def generate_c_variable_export_code(self, env, code):
+        # Generate code to create PyCFunction wrappers for exported C functions.
+        entries = []
+        for entry in env.var_entries:
+            if (entry.api
+                or entry.defined_in_pxd
+                or (Options.cimport_from_pyx and not entry.visibility == 'extern')):
+                entries.append(entry)
+        if entries:
+            env.use_utility_code(voidptr_export_utility_code)
+            for entry in entries:
+                signature = entry.type.declaration_code("")
+                code.putln('if (__Pyx_ExportVoidPtr("%s", (void *)&%s, "%s") < 0) %s' % (
+                    entry.name, entry.cname, signature,
+                    code.error_goto(self.pos)))
+
     def generate_c_function_export_code(self, env, code):
         # Generate code to create PyCFunction wrappers for exported C functions.
+        entries = []
         for entry in env.cfunc_entries:
-            if entry.api or entry.defined_in_pxd:
-                env.use_utility_code(function_export_utility_code)
+            if (entry.api
+                or entry.defined_in_pxd
+                or (Options.cimport_from_pyx and not entry.visibility == 'extern')):
+                entries.append(entry)
+        if entries:
+            env.use_utility_code(function_export_utility_code)
+            for entry in entries:
                 signature = entry.type.signature_string()
                 code.putln('if (__Pyx_ExportFunction("%s", (void (*)(void))%s, "%s") < 0) %s' % (
                     entry.name,
@@ -1988,6 +2149,34 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         for entry in module.c_class_entries:
             if entry.defined_in_pxd:
                 self.generate_type_import_code(env, entry.type, entry.pos, code)
+
+    def generate_c_variable_import_code_for_module(self, module, env, code):
+        # Generate import code for all exported C functions in a cimported module.
+        entries = []
+        for entry in module.var_entries:
+            if entry.defined_in_pxd:
+                entries.append(entry)
+        if entries:
+            env.use_utility_code(import_module_utility_code)
+            env.use_utility_code(voidptr_import_utility_code)
+            temp = code.funcstate.allocate_temp(py_object_type, manage_ref=True)
+            code.putln(
+                '%s = __Pyx_ImportModule("%s"); if (!%s) %s' % (
+                    temp,
+                    module.qualified_name,
+                    temp,
+                    code.error_goto(self.pos)))
+            for entry in entries:
+                if env is module:
+                    cname = entry.cname
+                else:
+                    cname = module.mangle(Naming.varptr_prefix, entry.name)
+                signature = entry.type.declaration_code("")
+                code.putln(
+                    'if (__Pyx_ImportVoidPtr(%s, "%s", (void **)&%s, "%s") < 0) %s' % (
+                        temp, entry.name, cname, signature,
+                        code.error_goto(self.pos)))
+            code.putln("Py_DECREF(%s); %s = 0;" % (temp, temp))
 
     def generate_c_function_import_code_for_module(self, module, env, code):
         # Generate import code for all exported C functions in a cimported module.
@@ -2067,19 +2256,21 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
         else:
             objstruct = "struct %s" % type.objstruct_cname
         module_name = type.module_name
+        condition = None
         if module_name not in ('__builtin__', 'builtins'):
             module_name = '"%s"' % module_name
         else:
             module_name = '__Pyx_BUILTIN_MODULE_NAME'
-        if type.name in self.py3_type_name_map:
-            code.putln("#if PY_MAJOR_VERSION >= 3")
-            code.putln('%s = __Pyx_ImportType(%s, "%s", sizeof(%s), 1); %s' % (
-                    type.typeptr_cname,
-                    module_name,
-                    self.py3_type_name_map[type.name],
-                    objstruct,
-                    error_code))
-            code.putln("#else")
+            if type.name in Code.non_portable_builtins_map:
+                condition, replacement = Code.non_portable_builtins_map[entry.name]
+                code.putln("#if %s" % condition)
+                code.putln('%s = __Pyx_ImportType(%s, "%s", sizeof(%s), 1); %s' % (
+                        type.typeptr_cname,
+                        module_name,
+                        replacement,
+                        objstruct,
+                        error_code))
+                code.putln("#else")
         code.putln('%s = __Pyx_ImportType(%s, "%s", sizeof(%s), %i); %s' % (
                 type.typeptr_cname,
                 module_name,
@@ -2087,7 +2278,7 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 objstruct,
                 not type.is_external or type.is_subclassed,
                 error_code))
-        if type.name in self.py3_type_name_map:
+        if condition:
             code.putln("#endif")
 
     def generate_type_ready_code(self, env, entry, code):
@@ -2198,6 +2389,39 @@ class ModuleNode(Nodes.Node, Nodes.BlockNode):
                 "%s = &%s;" % (
                     type.typeptr_cname, type.typeobj_cname))
 
+def generate_cfunction_declaration(entry, env, code, definition):
+    if entry.inline_func_in_pxd or (not entry.in_cinclude and (definition
+            or entry.defined_in_pxd or entry.visibility == 'extern')):
+        if entry.visibility == 'extern':
+            storage_class = "%s " % Naming.extern_c_macro
+            dll_linkage = "DL_IMPORT"
+        elif entry.visibility == 'public':
+            storage_class = "%s " % Naming.extern_c_macro
+            dll_linkage = "DL_EXPORT"
+        elif entry.visibility == 'private':
+            storage_class = "static "
+            dll_linkage = None
+        else:
+            storage_class = "static "
+            dll_linkage = None
+        type = entry.type
+
+        if entry.defined_in_pxd and not definition:
+            storage_class = "static "
+            dll_linkage = None
+            type = CPtrType(type)
+
+        header = type.declaration_code(entry.cname,
+                                       dll_linkage = dll_linkage)
+        if entry.func_modifiers:
+            modifiers = "%s " % ' '.join(entry.func_modifiers).upper()
+        else:
+            modifiers = ''
+        code.putln("%s%s%s; /*proto*/" % (
+            storage_class,
+            modifiers,
+            header))
+
 #------------------------------------------------------------------------------------
 #
 #  Runtime support code
@@ -2249,13 +2473,13 @@ bad:
 
 type_import_utility_code = UtilityCode(
 proto = """
-static PyTypeObject *__Pyx_ImportType(const char *module_name, const char *class_name, long size, int strict);  /*proto*/
+static PyTypeObject *__Pyx_ImportType(const char *module_name, const char *class_name, size_t size, int strict);  /*proto*/
 """,
 impl = """
 #ifndef __PYX_HAVE_RT_ImportType
 #define __PYX_HAVE_RT_ImportType
 static PyTypeObject *__Pyx_ImportType(const char *module_name, const char *class_name,
-    long size, int strict)
+    size_t size, int strict)
 {
     PyObject *py_module = 0;
     PyObject *result = 0;
@@ -2285,17 +2509,17 @@ static PyTypeObject *__Pyx_ImportType(const char *module_name, const char *class
             module_name, class_name);
         goto bad;
     }
-    if (!strict && ((PyTypeObject *)result)->tp_basicsize > size) {
+    if (!strict && ((PyTypeObject *)result)->tp_basicsize > (Py_ssize_t)size) {
         PyOS_snprintf(warning, sizeof(warning),
             "%s.%s size changed, may indicate binary incompatibility",
             module_name, class_name);
         #if PY_VERSION_HEX < 0x02050000
-        PyErr_Warn(NULL, warning);
+        if (PyErr_Warn(NULL, warning) < 0) goto bad;
         #else
-        PyErr_WarnEx(NULL, warning, 0);
+        if (PyErr_WarnEx(NULL, warning, 0) < 0) goto bad;
         #endif
     }
-    else if (((PyTypeObject *)result)->tp_basicsize != size) {
+    else if (((PyTypeObject *)result)->tp_basicsize != (Py_ssize_t)size) {
         PyErr_Format(PyExc_ValueError,
             "%s.%s has the wrong size, try recompiling",
             module_name, class_name);
@@ -2305,12 +2529,51 @@ static PyTypeObject *__Pyx_ImportType(const char *module_name, const char *class
 bad:
     Py_XDECREF(py_module);
     Py_XDECREF(result);
-    return 0;
+    return NULL;
 }
 #endif
 """)
 
 #------------------------------------------------------------------------------------
+
+voidptr_export_utility_code = UtilityCode(
+proto = """
+static int __Pyx_ExportVoidPtr(const char *name, void *p, const char *sig); /*proto*/
+""",
+impl = r"""
+static int __Pyx_ExportVoidPtr(const char *name, void *p, const char *sig) {
+    PyObject *d = 0;
+    PyObject *cobj = 0;
+
+    d = PyObject_GetAttrString(%(MODULE)s, (char *)"%(API)s");
+    if (!d) {
+        PyErr_Clear();
+        d = PyDict_New();
+        if (!d)
+            goto bad;
+        Py_INCREF(d);
+        if (PyModule_AddObject(%(MODULE)s, (char *)"%(API)s", d) < 0)
+            goto bad;
+    }
+#if PY_VERSION_HEX >= 0x02070000 && !(PY_MAJOR_VERSION==3&&PY_MINOR_VERSION==0)
+    cobj = PyCapsule_New(p, sig, 0);
+#else
+    cobj = PyCObject_FromVoidPtrAndDesc(p, (void *)sig, 0);
+#endif
+    if (!cobj)
+        goto bad;
+    if (PyDict_SetItemString(d, name, cobj) < 0)
+        goto bad;
+    Py_DECREF(cobj);
+    Py_DECREF(d);
+    return 0;
+bad:
+    Py_XDECREF(cobj);
+    Py_XDECREF(d);
+    return -1;
+}
+""" % {'MODULE': Naming.module_cname, 'API': Naming.api_name}
+)
 
 function_export_utility_code = UtilityCode(
 proto = """
@@ -2354,6 +2617,62 @@ bad:
     return -1;
 }
 """ % {'MODULE': Naming.module_cname, 'API': Naming.api_name}
+)
+
+voidptr_import_utility_code = UtilityCode(
+proto = """
+static int __Pyx_ImportVoidPtr(PyObject *module, const char *name, void **p, const char *sig); /*proto*/
+""",
+impl = """
+#ifndef __PYX_HAVE_RT_ImportVoidPtr
+#define __PYX_HAVE_RT_ImportVoidPtr
+static int __Pyx_ImportVoidPtr(PyObject *module, const char *name, void **p, const char *sig) {
+    PyObject *d = 0;
+    PyObject *cobj = 0;
+
+    d = PyObject_GetAttrString(module, (char *)"%(API)s");
+    if (!d)
+        goto bad;
+    cobj = PyDict_GetItemString(d, name);
+    if (!cobj) {
+        PyErr_Format(PyExc_ImportError,
+            "%%s does not export expected C variable %%s",
+                PyModule_GetName(module), name);
+        goto bad;
+    }
+#if PY_VERSION_HEX >= 0x02070000 && !(PY_MAJOR_VERSION==3&&PY_MINOR_VERSION==0)
+    if (!PyCapsule_IsValid(cobj, sig)) {
+        PyErr_Format(PyExc_TypeError,
+            "C variable %%s.%%s has wrong signature (expected %%s, got %%s)",
+             PyModule_GetName(module), name, sig, PyCapsule_GetName(cobj));
+        goto bad;
+    }
+    *p = PyCapsule_GetPointer(cobj, sig);
+#else
+    {const char *desc, *s1, *s2;
+    desc = (const char *)PyCObject_GetDesc(cobj);
+    if (!desc)
+        goto bad;
+    s1 = desc; s2 = sig;
+    while (*s1 != '\\0' && *s1 == *s2) { s1++; s2++; }
+    if (*s1 != *s2) {
+        PyErr_Format(PyExc_TypeError,
+            "C variable %%s.%%s has wrong signature (expected %%s, got %%s)",
+             PyModule_GetName(module), name, sig, desc);
+        goto bad;
+    }
+    *p = PyCObject_AsVoidPtr(cobj);}
+#endif
+    if (!(*p))
+        goto bad;
+    Py_DECREF(d);
+    return 0;
+bad:
+    Py_XDECREF(d);
+    return -1;
+}
+#endif
+""" % dict(API = Naming.api_name)
 )
 
 function_import_utility_code = UtilityCode(
@@ -2489,7 +2808,11 @@ __Pyx_import_all_from(PyObject *locals, PyObject *v)
             "from-import-* object has no __dict__ and no __all__");
             return -1;
         }
+#if PY_MAJOR_VERSION < 3
+        all = PyObject_CallMethod(dict, (char *)"keys", NULL);
+#else
         all = PyMapping_Keys(dict);
+#endif
         Py_DECREF(dict);
         if (all == NULL)
             return -1;
@@ -2579,7 +2902,8 @@ bad:
 """ % {'IMPORT_STAR'     : Naming.import_star,
        'IMPORT_STAR_SET' : Naming.import_star_set }
 
-refnanny_utility_code = UtilityCode(proto="""
+refnanny_utility_code = UtilityCode(
+proto="""
 #ifndef CYTHON_REFNANNY
   #define CYTHON_REFNANNY 0
 #endif
@@ -2594,7 +2918,37 @@ refnanny_utility_code = UtilityCode(proto="""
     void (*FinishContext)(void**);
   } __Pyx_RefNannyAPIStruct;
   static __Pyx_RefNannyAPIStruct *__Pyx_RefNanny = NULL;
-  static __Pyx_RefNannyAPIStruct * __Pyx_RefNannyImportAPI(const char *modname) {
+  static __Pyx_RefNannyAPIStruct *__Pyx_RefNannyImportAPI(const char *modname); /*proto*/
+  #define __Pyx_RefNannyDeclarations void *__pyx_refnanny = NULL;
+  #define __Pyx_RefNannySetupContext(name) \
+          __pyx_refnanny = __Pyx_RefNanny->SetupContext((name), __LINE__, __FILE__)
+  #define __Pyx_RefNannyFinishContext() \
+          __Pyx_RefNanny->FinishContext(&__pyx_refnanny)
+  #define __Pyx_INCREF(r)  __Pyx_RefNanny->INCREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
+  #define __Pyx_DECREF(r)  __Pyx_RefNanny->DECREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
+  #define __Pyx_GOTREF(r)  __Pyx_RefNanny->GOTREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
+  #define __Pyx_GIVEREF(r) __Pyx_RefNanny->GIVEREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
+  #define __Pyx_XINCREF(r)  do { if((r) != NULL) {__Pyx_INCREF(r); }} while(0)
+  #define __Pyx_XDECREF(r)  do { if((r) != NULL) {__Pyx_DECREF(r); }} while(0)
+  #define __Pyx_XGOTREF(r)  do { if((r) != NULL) {__Pyx_GOTREF(r); }} while(0)
+  #define __Pyx_XGIVEREF(r) do { if((r) != NULL) {__Pyx_GIVEREF(r);}} while(0)
+#else
+  #define __Pyx_RefNannyDeclarations
+  #define __Pyx_RefNannySetupContext(name)
+  #define __Pyx_RefNannyFinishContext()
+  #define __Pyx_INCREF(r) Py_INCREF(r)
+  #define __Pyx_DECREF(r) Py_DECREF(r)
+  #define __Pyx_GOTREF(r)
+  #define __Pyx_GIVEREF(r)
+  #define __Pyx_XINCREF(r) Py_XINCREF(r)
+  #define __Pyx_XDECREF(r) Py_XDECREF(r)
+  #define __Pyx_XGOTREF(r)
+  #define __Pyx_XGIVEREF(r)
+#endif /* CYTHON_REFNANNY */
+""",
+impl="""
+#if CYTHON_REFNANNY
+static __Pyx_RefNannyAPIStruct *__Pyx_RefNannyImportAPI(const char *modname) {
     PyObject *m = NULL, *p = NULL;
     void *r = NULL;
     m = PyImport_ImportModule((char *)modname);
@@ -2602,33 +2956,14 @@ refnanny_utility_code = UtilityCode(proto="""
     p = PyObject_GetAttrString(m, (char *)\"RefNannyAPI\");
     if (!p) goto end;
     r = PyLong_AsVoidPtr(p);
-  end:
+end:
     Py_XDECREF(p);
     Py_XDECREF(m);
     return (__Pyx_RefNannyAPIStruct *)r;
-  }
-  #define __Pyx_RefNannySetupContext(name) \
-          void *__pyx_refnanny = __Pyx_RefNanny->SetupContext((name), __LINE__, __FILE__)
-  #define __Pyx_RefNannyFinishContext() \
-          __Pyx_RefNanny->FinishContext(&__pyx_refnanny)
-  #define __Pyx_INCREF(r) __Pyx_RefNanny->INCREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
-  #define __Pyx_DECREF(r) __Pyx_RefNanny->DECREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
-  #define __Pyx_GOTREF(r) __Pyx_RefNanny->GOTREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
-  #define __Pyx_GIVEREF(r) __Pyx_RefNanny->GIVEREF(__pyx_refnanny, (PyObject *)(r), __LINE__)
-  #define __Pyx_XDECREF(r) do { if((r) != NULL) {__Pyx_DECREF(r);} } while(0)
-#else
-  #define __Pyx_RefNannySetupContext(name)
-  #define __Pyx_RefNannyFinishContext()
-  #define __Pyx_INCREF(r) Py_INCREF(r)
-  #define __Pyx_DECREF(r) Py_DECREF(r)
-  #define __Pyx_GOTREF(r)
-  #define __Pyx_GIVEREF(r)
-  #define __Pyx_XDECREF(r) Py_XDECREF(r)
+}
 #endif /* CYTHON_REFNANNY */
-#define __Pyx_XGIVEREF(r) do { if((r) != NULL) {__Pyx_GIVEREF(r);} } while(0)
-#define __Pyx_XGOTREF(r) do { if((r) != NULL) {__Pyx_GOTREF(r);} } while(0)
-""")
-
+""",
+)
 
 main_method = UtilityCode(
 impl = """
@@ -2637,14 +2972,12 @@ impl = """
 #endif
 
 #if PY_MAJOR_VERSION < 3
-int main(int argc, char** argv) {
+int %(main_method)s(int argc, char** argv) {
 #elif defined(WIN32) || defined(MS_WINDOWS)
-int wmain(int argc, wchar_t **argv) {
+int %(wmain_method)s(int argc, wchar_t **argv) {
 #else
 static int __Pyx_main(int argc, wchar_t **argv) {
 #endif
-    int r = 0;
-    PyObject* m = NULL;
     /* 754 requires that FP exceptions run in "no stop" mode by default,
      * and until C vendors implement C99's ways to control FP exceptions,
      * Python requires non-stop mode.  Alas, some platforms enable FP
@@ -2656,25 +2989,30 @@ static int __Pyx_main(int argc, wchar_t **argv) {
     m = fpgetmask();
     fpsetmask(m & ~FP_X_OFL);
 #endif
-    Py_SetProgramName(argv[0]);
+    if (argc && argv)
+        Py_SetProgramName(argv[0]);
     Py_Initialize();
-    PySys_SetArgv(argc, argv);
-    %(module_is_main)s = 1;
-#if PY_MAJOR_VERSION < 3
-        init%(module_name)s();
-#else
-        m = PyInit_%(module_name)s();
-#endif
-    if (PyErr_Occurred() != NULL) {
-        r = 1;
-        PyErr_Print(); /* This exits with the right code if SystemExit. */
-#if PY_MAJOR_VERSION < 3
-        if (Py_FlushLine()) PyErr_Clear();
-#endif
+    if (argc && argv)
+        PySys_SetArgv(argc, argv);
+    { /* init module '%(module_name)s' as '__main__' */
+      PyObject* m = NULL;
+      %(module_is_main)s = 1;
+      #if PY_MAJOR_VERSION < 3
+          init%(module_name)s();
+      #else
+          m = PyInit_%(module_name)s();
+      #endif
+      if (PyErr_Occurred()) {
+          PyErr_Print(); /* This exits with the right code if SystemExit. */
+          #if PY_MAJOR_VERSION < 3
+          if (Py_FlushLine()) PyErr_Clear();
+          #endif
+          return 1;
+      }
+      Py_XDECREF(m);
     }
-    Py_XDECREF(m);
     Py_Finalize();
-    return r;
+    return 0;
 }
 
 
@@ -2684,134 +3022,139 @@ static int __Pyx_main(int argc, wchar_t **argv) {
 static wchar_t*
 __Pyx_char2wchar(char* arg)
 {
-	wchar_t *res;
+    wchar_t *res;
 #ifdef HAVE_BROKEN_MBSTOWCS
-	/* Some platforms have a broken implementation of
-	 * mbstowcs which does not count the characters that
-	 * would result from conversion.  Use an upper bound.
-	 */
-	size_t argsize = strlen(arg);
+    /* Some platforms have a broken implementation of
+     * mbstowcs which does not count the characters that
+     * would result from conversion.  Use an upper bound.
+     */
+    size_t argsize = strlen(arg);
 #else
-	size_t argsize = mbstowcs(NULL, arg, 0);
+    size_t argsize = mbstowcs(NULL, arg, 0);
 #endif
-	size_t count;
-	unsigned char *in;
-	wchar_t *out;
+    size_t count;
+    unsigned char *in;
+    wchar_t *out;
 #ifdef HAVE_MBRTOWC
-	mbstate_t mbs;
+    mbstate_t mbs;
 #endif
-	if (argsize != (size_t)-1) {
-		res = (wchar_t *)malloc((argsize+1)*sizeof(wchar_t));
-		if (!res)
-			goto oom;
-		count = mbstowcs(res, arg, argsize+1);
-		if (count != (size_t)-1) {
-			wchar_t *tmp;
-			/* Only use the result if it contains no
-			   surrogate characters. */
-			for (tmp = res; *tmp != 0 &&
-				     (*tmp < 0xd800 || *tmp > 0xdfff); tmp++)
-				;
-			if (*tmp == 0)
-				return res;
-		}
-		free(res);
-	}
-	/* Conversion failed. Fall back to escaping with surrogateescape. */
+    if (argsize != (size_t)-1) {
+        res = (wchar_t *)malloc((argsize+1)*sizeof(wchar_t));
+        if (!res)
+            goto oom;
+        count = mbstowcs(res, arg, argsize+1);
+        if (count != (size_t)-1) {
+            wchar_t *tmp;
+            /* Only use the result if it contains no
+               surrogate characters. */
+            for (tmp = res; *tmp != 0 &&
+                     (*tmp < 0xd800 || *tmp > 0xdfff); tmp++)
+                ;
+            if (*tmp == 0)
+                return res;
+        }
+        free(res);
+    }
+    /* Conversion failed. Fall back to escaping with surrogateescape. */
 #ifdef HAVE_MBRTOWC
-	/* Try conversion with mbrtwoc (C99), and escape non-decodable bytes. */
+    /* Try conversion with mbrtwoc (C99), and escape non-decodable bytes. */
 
-	/* Overallocate; as multi-byte characters are in the argument, the
-	   actual output could use less memory. */
-	argsize = strlen(arg) + 1;
-	res = malloc(argsize*sizeof(wchar_t));
-	if (!res) goto oom;
-	in = (unsigned char*)arg;
-	out = res;
-	memset(&mbs, 0, sizeof mbs);
-	while (argsize) {
-		size_t converted = mbrtowc(out, (char*)in, argsize, &mbs);
-		if (converted == 0)
-			/* Reached end of string; null char stored. */
-			break;
-		if (converted == (size_t)-2) {
-			/* Incomplete character. This should never happen,
-			   since we provide everything that we have -
-			   unless there is a bug in the C library, or I
-			   misunderstood how mbrtowc works. */
-			fprintf(stderr, "unexpected mbrtowc result -2\\n");
-			return NULL;
-		}
-		if (converted == (size_t)-1) {
-			/* Conversion error. Escape as UTF-8b, and start over
-			   in the initial shift state. */
-			*out++ = 0xdc00 + *in++;
-			argsize--;
-			memset(&mbs, 0, sizeof mbs);
-			continue;
-		}
-		if (*out >= 0xd800 && *out <= 0xdfff) {
-			/* Surrogate character.  Escape the original
-			   byte sequence with surrogateescape. */
-			argsize -= converted;
-			while (converted--)
-				*out++ = 0xdc00 + *in++;
-			continue;
-		}
-		/* successfully converted some bytes */
-		in += converted;
-		argsize -= converted;
-		out++;
-	}
+    /* Overallocate; as multi-byte characters are in the argument, the
+       actual output could use less memory. */
+    argsize = strlen(arg) + 1;
+    res = malloc(argsize*sizeof(wchar_t));
+    if (!res) goto oom;
+    in = (unsigned char*)arg;
+    out = res;
+    memset(&mbs, 0, sizeof mbs);
+    while (argsize) {
+        size_t converted = mbrtowc(out, (char*)in, argsize, &mbs);
+        if (converted == 0)
+            /* Reached end of string; null char stored. */
+            break;
+        if (converted == (size_t)-2) {
+            /* Incomplete character. This should never happen,
+               since we provide everything that we have -
+               unless there is a bug in the C library, or I
+               misunderstood how mbrtowc works. */
+            fprintf(stderr, "unexpected mbrtowc result -2\\n");
+            return NULL;
+        }
+        if (converted == (size_t)-1) {
+            /* Conversion error. Escape as UTF-8b, and start over
+               in the initial shift state. */
+            *out++ = 0xdc00 + *in++;
+            argsize--;
+            memset(&mbs, 0, sizeof mbs);
+            continue;
+        }
+        if (*out >= 0xd800 && *out <= 0xdfff) {
+            /* Surrogate character.  Escape the original
+               byte sequence with surrogateescape. */
+            argsize -= converted;
+            while (converted--)
+                *out++ = 0xdc00 + *in++;
+            continue;
+        }
+        /* successfully converted some bytes */
+        in += converted;
+        argsize -= converted;
+        out++;
+    }
 #else
-	/* Cannot use C locale for escaping; manually escape as if charset
-	   is ASCII (i.e. escape all bytes > 128. This will still roundtrip
-	   correctly in the locale's charset, which must be an ASCII superset. */
-	res = malloc((strlen(arg)+1)*sizeof(wchar_t));
-	if (!res) goto oom;
-	in = (unsigned char*)arg;
-	out = res;
-	while(*in)
-		if(*in < 128)
-			*out++ = *in++;
-		else
-			*out++ = 0xdc00 + *in++;
-	*out = 0;
+    /* Cannot use C locale for escaping; manually escape as if charset
+       is ASCII (i.e. escape all bytes > 128. This will still roundtrip
+       correctly in the locale's charset, which must be an ASCII superset. */
+    res = malloc((strlen(arg)+1)*sizeof(wchar_t));
+    if (!res) goto oom;
+    in = (unsigned char*)arg;
+    out = res;
+    while(*in)
+        if(*in < 128)
+            *out++ = *in++;
+        else
+            *out++ = 0xdc00 + *in++;
+    *out = 0;
 #endif
-	return res;
+    return res;
 oom:
-	fprintf(stderr, "out of memory\\n");
-	return NULL;
+    fprintf(stderr, "out of memory\\n");
+    return NULL;
 }
 
 int
-main(int argc, char **argv)
+%(main_method)s(int argc, char **argv)
 {
-	wchar_t **argv_copy = (wchar_t **)malloc(sizeof(wchar_t*)*argc);
-	/* We need a second copies, as Python might modify the first one. */
-	wchar_t **argv_copy2 = (wchar_t **)malloc(sizeof(wchar_t*)*argc);
-	int i, res;
-	char *oldloc;
-	if (!argv_copy || !argv_copy2) {
-		fprintf(stderr, "out of memory\\n");
-		return 1;
-	}
-	oldloc = strdup(setlocale(LC_ALL, NULL));
-	setlocale(LC_ALL, "");
-	for (i = 0; i < argc; i++) {
-		argv_copy2[i] = argv_copy[i] = __Pyx_char2wchar(argv[i]);
-		if (!argv_copy[i])
-			return 1;
-	}
-	setlocale(LC_ALL, oldloc);
-	free(oldloc);
-	res = __Pyx_main(argc, argv_copy);
-	for (i = 0; i < argc; i++) {
-		free(argv_copy2[i]);
-	}
-	free(argv_copy);
-	free(argv_copy2);
-	return res;
+    if (!argc) {
+        return __Pyx_main(0, NULL);
+    }
+    else {
+        wchar_t **argv_copy = (wchar_t **)malloc(sizeof(wchar_t*)*argc);
+        /* We need a second copies, as Python might modify the first one. */
+        wchar_t **argv_copy2 = (wchar_t **)malloc(sizeof(wchar_t*)*argc);
+        int i, res;
+        char *oldloc;
+        if (!argv_copy || !argv_copy2) {
+            fprintf(stderr, "out of memory\\n");
+            return 1;
+        }
+        oldloc = strdup(setlocale(LC_ALL, NULL));
+        setlocale(LC_ALL, "");
+        for (i = 0; i < argc; i++) {
+            argv_copy2[i] = argv_copy[i] = __Pyx_char2wchar(argv[i]);
+            if (!argv_copy[i])
+                return 1;
+        }
+        setlocale(LC_ALL, oldloc);
+        free(oldloc);
+        res = __Pyx_main(argc, argv_copy);
+        for (i = 0; i < argc; i++) {
+            free(argv_copy2[i]);
+        }
+        free(argv_copy);
+        free(argv_copy2);
+        return res;
+    }
 }
 #endif
 """)
@@ -2823,3 +3166,26 @@ packed_struct_utility_code = UtilityCode(proto="""
 #define __Pyx_PACKED
 #endif
 """, impl="", proto_block='utility_code_proto_before_types')
+
+check_binary_version_utility_code = UtilityCode(proto="""
+static int __Pyx_check_binary_version(void);
+""", impl="""
+static int __Pyx_check_binary_version(void) {
+    char ctversion[4], rtversion[4];
+    PyOS_snprintf(ctversion, 4, "%d.%d", PY_MAJOR_VERSION, PY_MINOR_VERSION);
+    PyOS_snprintf(rtversion, 4, "%s", Py_GetVersion());
+    if (ctversion[0] != rtversion[0] || ctversion[2] != rtversion[2]) {
+        char message[200];
+        PyOS_snprintf(message, sizeof(message),
+                      "compiletime version %s of module '%.100s' "
+                      "does not match runtime version %s",
+                      ctversion, __Pyx_MODULE_NAME, rtversion);
+        #if PY_VERSION_HEX < 0x02050000
+        return PyErr_Warn(NULL, message);
+        #else
+        return PyErr_WarnEx(NULL, message, 1);
+        #endif
+    }
+    return 0;
+}
+""")
