@@ -14,7 +14,7 @@ CHANGELOGS=debian/changelogs
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 
-install/cython:: assure-changelogs build/cython.1
+install/cython:: build/cython.1
 	dh_installman build/cython.1
 
 #
