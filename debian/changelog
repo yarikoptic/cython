@@ -15,6 +15,8 @@ cython (0.15.1~rc1-1) unstable; urgency=low
   [ Yaroslav Halchenko ]
   * debian/rules: Disabled assure-changelogs target for this release
     since no changelogs were compiled by upstream (yet)
+  * Standards-Version bumped to 3.9.2 (no change needed)
+
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 18 Sep 2011 22:47:28 -0400
 
