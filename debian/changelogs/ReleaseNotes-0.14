@@ -1,4 +1,4 @@
-Fetched from http://wiki.cython.org/ReleaseNotes-0.14 on Sun Feb 13 09:48:15 EST 2011
+Fetched from http://wiki.cython.org/ReleaseNotes-0.14 on Tue Sep 20 16:54:45 CEST 2011
 
 = Cython 0.14 =
  * Release date: December 14, 2010
@@ -74,3 +74,5 @@ Many people contributed to this release, including:
  * Vitja Makarov
  * Corbin Simpson
  * Kurt Smith
+----
+CategoryReleaseNotes

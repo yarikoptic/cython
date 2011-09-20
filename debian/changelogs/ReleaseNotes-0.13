@@ -1,4 +1,4 @@
-Fetched from http://wiki.cython.org/ReleaseNotes-0.13 on Sun Feb 13 09:43:03 EST 2011
+Fetched from http://wiki.cython.org/ReleaseNotes-0.13 on Tue Sep 20 16:54:47 CEST 2011
 
 = Cython 0.13 =
  * Release date: August 25, 2010
@@ -77,3 +77,5 @@ Many people contributed to this release, including:
  * Kurt Smith
  * Erik Tollerud
  * Carl Witty
+----
+CategoryReleaseNotes

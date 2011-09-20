@@ -72,9 +72,9 @@ get-changelogs:
 		rnotes_url=$(WIKI_URL)/$$rnotes; \
 		echo "Fetching $$rnotes_url"; \
 		{ \
-		 echo -e "Fetched from $$rnotes_url on `date`\n"; \
+		 echo "Fetched from $$rnotes_url on `date`\n"; \
 		 $(WGET) -O- "$$rnotes_url?action=raw" \
-		 | sed -e 's,\({{{\|}}}\),,g' -e 's,\[\[\([^]]*\)|[^]]*\]\],\1,g'; \
+		 | sed -e 's,\({{{\|}}}\),,g' -e 's,\[\[\([^]]*\)|[^]]*\]\],\1,g' -e 's/\r//'; \
 		} >| $(CHANGELOGS)/$$rnotes; \
 	 done
 

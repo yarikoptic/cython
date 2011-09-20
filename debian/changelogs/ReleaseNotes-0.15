@@ -1,4 +1,4 @@
-Fetched from http://wiki.cython.org/ReleaseNotes-0.15 on Wed Aug 10 16:25:01 EDT 2011
+Fetched from http://wiki.cython.org/ReleaseNotes-0.15 on Tue Sep 20 16:54:44 CEST 2011
 
 = Cython 0.15 =
  * Release date: August 5, 2011
@@ -47,11 +47,11 @@ This release contains over a thousand commits including hundreds of bugfixes and
  * globals() now returns a read-only dict of the Cython module's globals, rather than the globals
    of the first non-Cython module in the stack 
 
- * Many C++ exceptions are now special cases to give closer Python counterparts.  This means that except+ functions that formerly raised generic RuntimeErrors may raise something else such as ArithmeticError.
+ * Many C++ exceptions are now special cased to give closer Python counterparts.  This means that except+ functions that formerly raised generic RuntimeErrors may raise something else such as ArithmeticError.
 
 == Known regressions ==
 
- * The inlined generator expressions (introduced in Cython 0.13) were disabled in favour of full generator expression support. This induces a performance regression for cases that were previously inlined.
+ * The inlined generator expressions (introduced in Cython 0.13) were disabled in favour of full generator expression support. This breaks code that previously used them inside of cdef functions (usage in def functions continues to work) and induces a performance regression for cases that continue to work but that were previously inlined. We hope to reinstate this feature in the near future.
 
 == Contributors ==
 

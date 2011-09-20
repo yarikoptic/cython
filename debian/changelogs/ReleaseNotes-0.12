@@ -1,4 +1,4 @@
-Fetched from http://wiki.cython.org/ReleaseNotes-0.12 on Wed Sep 29 11:06:57 EDT 2010
+Fetched from http://wiki.cython.org/ReleaseNotes-0.12 on Tue Sep 20 16:54:48 CEST 2011
 
 = Cython 0.12 =
 
@@ -61,3 +61,5 @@ This revision to introduces some backwards incompatible changes to more closely 
 
 Thanks also to everybody who's helping us out in our discussions on the 
 mailing list.
+----
+CategoryReleaseNotes
