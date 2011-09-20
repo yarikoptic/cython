@@ -1,4 +1,4 @@
-cython (0.15.1~rc1-1) unstable; urgency=low
+cython (0.15.1-1) unstable; urgency=low
 
   [ Nikolaus Rath ]
   * New upstream version (Closes: #637388)
@@ -13,12 +13,9 @@ cython (0.15.1~rc1-1) unstable; urgency=low
     0001-Python-3-fix-NumPy-support.patch
 
   [ Yaroslav Halchenko ]
-  * debian/rules: Disabled assure-changelogs target for this release
-    since no changelogs were compiled by upstream (yet)
   * Standards-Version bumped to 3.9.2 (no change needed)
 
-
- -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 18 Sep 2011 22:47:28 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Tue, 20 Sep 2011 10:35:03 -0400
 
 cython (0.14.1-7) UNRELEASED; urgency=low
 
