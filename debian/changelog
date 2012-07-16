@@ -1,15 +1,5 @@
 cython (0.16-1) experimental; urgency=low
 
-  * Fresh upstream release (Closes: #671070)
-    - compatibile with changed __import__ in Python 3.3 (Closes: #681697)
-    - required to BFS for new python-pymtp
-    - dropping patches deb_tempdisable_numpy_doctests, python27-testsuite-fix.patch
-    - excluding parallel tests since they fail ATM (reported/known upstream)
-
- -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 30 Jun 2012 12:34:14 -0400
-
-cython (0.15.1-3) unstable; urgency=low
-
   [ Bradley M. Froehle ]
   * Switch from cdbs to dh7
   * Change build system to dh_python2 (Closes: #677405).
@@ -18,8 +8,13 @@ cython (0.15.1-3) unstable; urgency=low
 
   [ Yaroslav Halchenko ]
   * "stings" typo patch, Thanks Jakub Wilk (Closes: #679359)
+  * Fresh upstream release (Closes: #671070)
+    - compatibile with changed __import__ in Python 3.3 (Closes: #681697)
+    - required to BFS for new python-pymtp
+    - dropping patches deb_tempdisable_numpy_doctests, python27-testsuite-fix.patch
+    - excluding parallel tests since they fail ATM (reported/known upstream)
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 30 Jun 2012 12:13:28 -0400
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 15 Jul 2012 20:16:03 -0400
 
 cython (0.15.1-2) unstable; urgency=low
 
