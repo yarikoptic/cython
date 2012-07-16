@@ -1,3 +1,10 @@
+cython (0.16-1) unstable; urgency=low
+
+  * Fresh upstream release (Closes: #671070)
+    - required to BFS for new python-pymtp
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 30 Jun 2012 12:34:14 -0400
+
 cython (0.15.1-3) unstable; urgency=low
 
   [ Bradley M. Froehle ]
@@ -8,7 +15,7 @@ cython (0.15.1-3) unstable; urgency=low
 
   [ Yaroslav Halchenko ]
   * "stings" typo patch, Thanks Jakub Wilk (Closes: #679359)
-  
+
  -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 30 Jun 2012 12:13:28 -0400
 
 cython (0.15.1-2) unstable; urgency=low
