@@ -1,8 +1,6 @@
 #!/usr/bin/make -f
 # -*- makefile -*-
 
-DEB_PYTHON_SYSTEM=pysupport
-
 #  Apparently WGET agent is not favored by upstream's MoinMoin
 WGET_AGENT_STRING="Lynx/2.8.8dev.4 libwww-FM/2.14 SSL-MM/1.4.1 GNUTLS/2.8.6"
 WGET=wget -q --user-agent=$(WGET_AGENT_STRING)
@@ -11,57 +9,60 @@ WIKI_URL=http://wiki.cython.org
 # Directory where to store upstream changelogs
 CHANGELOGS=debian/changelogs
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/class/python-distutils.mk
+# Python versions
+PYDEF=$(shell pyversions -dv)
+PY2VERS=$(shell pyversions -vr)
 
-install/cython:: assure-changelogs build/cython.1
-	dh_installman build/cython.1
+%:
+	dh $@ --with python2 --buildsystem python_distutils
 
-#
-# Testing
-#
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-install/cython::
-	: # Run tests battery against current default version of Python
-	PYTHONPATH=$(shell /bin/ls -d $(CURDIR)/build/lib.*$(cdbs_python_current_version)) \
-		python runtests.py --no-refnanny -v -v --work-dir=build/work-dir
-endif
-
-#
-# Debugging version -dbg
-#
-# Re-build using python-dbg
-install/cython-dbg::
-	for i in $(cdbs_python_build_versions); do \
-	  python$$i-dbg ./setup.py install $(DEB_PYTHON_INSTALL_ARGS_ALL) \
-		 --root $(CURDIR)/debian/cython-dbg; \
-	done
-	: # Keep only _d.so files for cython-dbg package
-	find debian/cython-dbg ! -type d ! -name '*_d.so' | xargs rm -f
-	: # Prune empty directories
-	find debian/cython-dbg -depth -empty -exec rmdir \{\} \;
-
-binary-predeb/cython-dbg::
-	mkdir -p debian/cython-dbg/usr/share/doc
-	ln -s cython debian/cython-dbg/usr/share/doc/cython-dbg
-
-# Fix shebang:
-binary-install/cython::
-	sed -i -e '1 s,#!.*python.*,#! /usr/bin/python,' debian/cython/usr/bin/*
-
-#
-# Custom rules used above
-#
-build/cython.1: build
+override_dh_installman:
 	: # Generate a manpage using help2man
-	PYTHONPATH="$(shell /bin/ls -d $(CURDIR)/build/lib.*-$(cdbs_python_current_version) 2>&1)" \
+	PYTHONPATH=`/bin/ls -d $(CURDIR)/build/lib.*-$(PYDEF)` \
 	  help2man --no-info --no-discard-stderr \
 		-n "compile Cython code (.pyx) into C to build a Python extension" \
 		bin/cython >| build/cython.1
 	: # Verify that manpage generated nicely -- no Errors reported
 	grep -q 'ImportError:' build/cython.1 && exit 1 || :
+	dh_installman build/cython.1
+
+override_dh_install:
+	dh_install
+
+	: # fix shebang
+	sed -i -e '1 s,#!.*python.*,#!/usr/bin/python,' debian/cython/usr/bin/*
+
+	: # remove files installed from cython.install that belong in -dbg
+	find $(CURDIR)/debian/cython/ -name "*_d.so" -delete
+
+	: # share -dbg and normal package doc dirs
+	rm -rf debian/cython-dbg/usr/share/doc/cython-dbg
+	dh_link -pcython-dbg usr/share/doc/cython usr/share/doc/cython-dbg
+
+override_dh_installchangelogs:
+	dh_installchangelogs $(CHANGELOGS)/ReleaseHistory
+
+override_dh_installdocs: assure-changelogs
+	dh_installdocs $(CHANGELOGS)/ReleaseNotes-*
+
+override_dh_auto_test:
+ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	set -e; for P in $(PY2VERS); do \
+	 PYTHONPATH=`/bin/ls -d $(CURDIR)/build/lib.*-$$P` \
+	  /usr/bin/python$$P runtests.py --no-refnanny -v -v --work-dir=build/work-dir; \
+	done
+endif
+
+override_dh_strip:
+	dh_strip -pcython --dbg-package=cython-dbg
+
+override_dh_auto_clean:
+	rm -rf build
+	find -name "*.py[oc]" -type f -delete
 
 # To fetch and update upstream Changelogs
+DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
+
 # Notes:
 #  SED is used to do minor de-wikification to make text readable
 get-changelogs:
@@ -86,18 +87,3 @@ assure-changelogs:
 		echo >&2 "I: Run 'debian/rules get-changelogs' or add version into $(CHANGELOGS)/skip"; \
 		exit 1; \
 	fi
-
-
-clean::
-	rm -f Cython/Compiler/Lexicon.pickle Cython/*/*.c
-	: # Just prune build entirely
-	rm -rf build
-
-# Install directly into package directory (despite multiple packages
-# due to having cython-dbg)
-DEB_DESTDIR = $(CURDIR)/debian/cython
-DEB_INSTALL_CHANGELOGS_cython = $(CHANGELOGS)/ReleaseHistory
-DEB_INSTALL_DOCS_cython = $(CHANGELOGS)/ReleaseNotes*
-# CDBS causes the puke and Yarik have no time to figure it out
-# DEB_INSTALL_DOCS_cython-dbg = --link-doc=cython
-DEB_CLEAN_EXCLUDE = $(CHANGELOGS)

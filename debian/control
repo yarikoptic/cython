@@ -3,8 +3,8 @@ Section: python
 Priority: optional
 Maintainer: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Uploaders: Ondrej Certik <ondrej@certik.cz>, Yaroslav Halchenko <debian@onerussian.com>
-Build-Depends: cdbs (>= 0.4.49), debhelper (>= 5.0.38), python (>= 2.4.4-6), python-all-dev (>= 2.4.4-6), python-support (>= 0.7.5), python-all-dbg, help2man (>= 1.37.1~), python-numpy
-Standards-Version: 3.9.2
+Build-Depends: debhelper (>= 7.0.50~), python-all-dev (>= 2.6.6-3~), python-all-dbg, help2man (>= 1.37.1~), python-numpy
+Standards-Version: 3.9.3
 Homepage: http://cython.org/
 Vcs-Svn: svn://svn.debian.org/svn/python-apps/packages/cython/trunk
 Vcs-Browser: http://svn.debian.org/viewsvn/python-apps/packages/cython/trunk/
@@ -14,7 +14,6 @@ Package: cython
 Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}, ${shlibs:Depends}
 Suggests: python-dev, gcc
-XB-Python-Version: ${python:Versions}
 Description: C-Extensions for Python
  Cython is a language that makes writing C extensions for the Python language as
  easy as Python itself. Cython is based on the well-known Pyrex, but supports
@@ -34,7 +33,6 @@ Section: debug
 Priority: extra
 Depends: ${python:Depends}, ${misc:Depends}, ${shlibs:Depends}, cython (= ${binary:Version})
 Suggests: gcc
-XB-Python-Version: ${python:Versions}
 Description: C-Extensions for Python (Debug Build of Cython)
  This package contains Cython libraries built against versions of
  Python configured with --pydebug.
