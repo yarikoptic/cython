@@ -4,7 +4,6 @@ cython (0.15.1-3) unstable; urgency=low
   * Switch from cdbs to dh7
   * Change build system to dh_python2 (Closes: #677405).
     Thanks also to Julian Taylor for an alternative patch
-  * Provide Python 3 package -- cython3 (Closes: #674073)
   * Bump Standards-Version to 3.9.3
 
   [ Yaroslav Halchenko ]
