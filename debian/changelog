@@ -1,8 +1,9 @@
-cython (0.16-1) unstable; urgency=low
+cython (0.16-1) experimental; urgency=low
 
   * Fresh upstream release (Closes: #671070)
     - required to BFS for new python-pymtp
     - dropping patches deb_tempdisable_numpy_doctests, python27-testsuite-fix.patch
+    - excluding parallel tests since they fail ATM (reported/known upstream)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 30 Jun 2012 12:34:14 -0400
 

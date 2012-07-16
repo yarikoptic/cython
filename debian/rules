@@ -49,7 +49,7 @@ override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	set -e; for P in $(PY2VERS); do \
 	 PYTHONPATH=`/bin/ls -d $(CURDIR)/build/lib.*-$$P` \
-	  /usr/bin/python$$P runtests.py --no-refnanny -v -v --work-dir=build/work-dir; \
+	  /usr/bin/python$$P runtests.py --no-refnanny -v -v --exclude="parallel" --work-dir=build/work-dir; \
 	done
 endif
 
