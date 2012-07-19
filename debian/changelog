@@ -1,3 +1,10 @@
+cython (0.16-2) UNRELEASED; urgency=low
+
+  [ Bradley M. Froehle ]
+  * Provide Python 3 package -- cython3 (Closes: #674073)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 18 Jul 2012 20:53:13 -0400
+
 cython (0.16-1) experimental; urgency=low
 
   [ Bradley M. Froehle ]
