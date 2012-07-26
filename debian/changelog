@@ -10,6 +10,8 @@ cython (0.17~beta1-1) experimental; urgency=low
     (was triggered by some tests leading to FTBFS)
   * debian/watch
     - allow fetching beta-releases
+  * debian/patches
+    - dropped (upstreamed)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 18 Jul 2012 21:41:44 -0400
 
