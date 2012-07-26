@@ -14,6 +14,8 @@ PYDEF=$(shell pyversions -dv)
 PY2VERS=$(shell pyversions -vr)
 PY3VERS=$(shell py3versions -vr)
 
+export HOME=$(CURDIR)/build
+
 %:
 	dh $@ --with python2,python3 --buildsystem python_distutils
 
