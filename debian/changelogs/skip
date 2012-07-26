@@ -1,2 +1,3 @@
 # Enter here upstream versions which should not have changelogs fetched, e.g.
 0.0.1
+0.17~beta1
