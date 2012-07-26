@@ -12,6 +12,8 @@ cython (0.17~beta1-1) experimental; urgency=low
     - allow fetching beta-releases
   * debian/patches
     - dropped (upstreamed)
+    - added up_upstream_cache_ext_suffix to resolve failure due to multiarch
+      (see #682795 for the reason)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 18 Jul 2012 21:41:44 -0400
 
