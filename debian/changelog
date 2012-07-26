@@ -1,11 +1,15 @@
-cython (0.16-2) UNRELEASED; urgency=low
+cython (0.17~beta1-1) experimental; urgency=low
 
   [ Bradley M. Froehle ]
   * Provide Python 3 package -- cython3 (Closes: #674073)
 
   [ Yaroslav Halchenko ]
+  * New upstream release
+    - addresses gcc 4.7 compatibility (Closes: #682652)
   * export HOME=$(CURDIR)/build to not rely on user's writable HOME
     (was triggered by some tests leading to FTBFS)
+  * debian/watch
+    - allow fetching beta-releases
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 18 Jul 2012 21:41:44 -0400
 
