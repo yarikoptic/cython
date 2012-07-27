@@ -85,6 +85,13 @@ ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
 	done
 endif
 
+override_dh_python2:
+	dh_python2 -pcython
+
+override_dh_python3:
+	dh_python3 -pcython3
+
+
 override_dh_strip:
 	dh_strip -pcython --dbg-package=cython-dbg
 	dh_strip -pcython3 --dbg-package=cython3-dbg

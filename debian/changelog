@@ -1,3 +1,10 @@
+cython (0.17~beta1-2) experimental; urgency=low
+
+  * Restrict actions of dh_python* helpers to corresponding cython*
+    packages (otherwise cython obtains python3 shebang)
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 26 Jul 2012 15:30:25 -0400
+
 cython (0.17~beta1-1) experimental; urgency=low
 
   [ Bradley M. Froehle ]
