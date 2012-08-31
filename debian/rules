@@ -96,7 +96,7 @@ override_dh_strip:
 	dh_strip -pcython --dbg-package=cython-dbg
 	dh_strip -pcython3 --dbg-package=cython3-dbg
 
-override_dh_auto_clean:
+override_dh_auto_clean: assure-changelogs
 	rm -rf build
 	find -name "*.py[oc]" -type f -delete
 
