@@ -1,6 +1,7 @@
 cython (0.17~beta1+git665-gf5bfa12-1) experimental; urgency=low
 
   * New upstream pre-release snapshot
+    - adopted up_upstream_cache_ext_suffix
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 23 Aug 2012 09:47:01 -0400
 
