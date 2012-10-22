@@ -1,3 +1,9 @@
+cython (0.17.1-1) experimental; urgency=low
+
+  * Bugfix release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 29 Sep 2012 19:01:53 -0400
+
 cython (0.17-1) experimental; urgency=low
 
   * New upstream release
