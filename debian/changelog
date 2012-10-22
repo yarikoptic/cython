@@ -1,3 +1,9 @@
+cython (0.17-1) experimental; urgency=low
+
+  * New upstream release
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sun, 16 Sep 2012 16:41:46 -0400
+
 cython (0.17~beta4+git15-g6457431-1) experimental; urgency=low
 
   * New upstream pre-release snapshot
