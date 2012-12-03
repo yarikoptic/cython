@@ -1,5 +1,9 @@
-Fetched from http://wiki.cython.org/ReleaseHistory on Thu Sep 20 11:28:57 EDT 2012\n
+Fetched from http://wiki.cython.org/ReleaseHistory on Mon Dec  3 11:21:48 EST 2012\n
 There seems to be no list of releases available on the web. These are collected from the mailing list. It is not complete, but is probably already useful so that people can see if it worth upgrading to the latest version. The current release is always linked to from the main site, old releases can be found at http://cython.org/release/.
+
+The latest changelog is available in the source tree: for the https://github.com/cython/cython/blob/master/CHANGES.rst and for https://github.com/cython/cython/blob/0.17/CHANGES.rst.
+
+ * [[ReleaseNotes-0.17.1]]
 
  * [[ReleaseNotes-0.17]]
 
