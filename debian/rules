@@ -14,7 +14,9 @@ PYDEF=$(shell pyversions -dv)
 PY2VERS=$(shell pyversions -vr)
 PY3VERS=$(shell py3versions -vr)
 
+# In case matplotlib or anything else inquires
 export HOME=$(CURDIR)/build
+export MPLCONFIGDIR=$(CURDIR)/build
 
 %:
 	dh $@ --with python2,python3 --buildsystem python_distutils
@@ -76,6 +78,18 @@ override_dh_installchangelogs:
 override_dh_installdocs: assure-changelogs
 	dh_installdocs -pcython $(CHANGELOGS)/ReleaseNotes-*
 	dh_installdocs -pcython3 $(CHANGELOGS)/ReleaseNotes-*
+
+	: # Build Documentation
+ifeq (,$(filter nodoc,$(DEB_BUILD_OPTIONS)))
+ifneq (,$(findstring -a,$(DH_INTERNAL_OPTIONS)))
+	: # not building documentation in -a
+else
+	make -C docs html
+	: # Use jquery from Debian package, so prune shipped one
+	-rm docs/build/html/_static/jquery.js
+	dh_installdocs -pcython-doc
+endif
+endif
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))

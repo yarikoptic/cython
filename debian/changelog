@@ -12,6 +12,8 @@ cython (0.17.2-1) experimental; urgency=low
   * Boost python-dev to Recommends from Suggests for most common usage
     scenarios (Closes: #545809).  Also list python3-dev instead
     of python-dev for cython3 package.
+  * Provide cython-doc package with documentation built using sphinx
+    (Closes: #615932)
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 05 Dec 2012 12:28:05 -0500
 
