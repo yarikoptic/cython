@@ -7,6 +7,8 @@ cython (0.17.2-1) experimental; urgency=low
     - 0006-fix-refnanny-code-for-del-statement-inside-of-genera.patch
     - 0001-fix-analysis-of-entry-to-be-a-weakref-typo-introduce.patch
       (Closes: #692313)
+    - fix-ma-includes.patch from Julian Taylor to add platform specific
+      paths (e.g. introduced with multiarch in python3.3) (Closes: #693555)
   * Boost python-dev to Recommends from Suggests for most common usage
     scenarios (Closes: #545809).  Also list python3-dev instead
     of python-dev for cython3 package.

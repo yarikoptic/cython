@@ -12,11 +12,9 @@ Lead to crash with python-dbg:
  Cython/Compiler/Symtab.py | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/Cython/Compiler/Symtab.py b/Cython/Compiler/Symtab.py
-index 4631d73..6ed9479 100644
 --- a/Cython/Compiler/Symtab.py
 +++ b/Cython/Compiler/Symtab.py
-@@ -802,7 +802,7 @@ class Scope(object):
+@@ -801,7 +801,7 @@ class Scope(object):
  
          for entry in self.var_entries:
              if entry.type.is_pyobject:
@@ -25,6 +23,3 @@ index 4631d73..6ed9479 100644
                      py_attrs.append(entry)
              elif entry.type == PyrexTypes.c_py_buffer_type:
                  py_buffers.append(entry)
--- 
-1.8.0
-
