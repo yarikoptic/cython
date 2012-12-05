@@ -7,8 +7,11 @@ cython (0.17.2-1) experimental; urgency=low
     - 0006-fix-refnanny-code-for-del-statement-inside-of-genera.patch
     - 0001-fix-analysis-of-entry-to-be-a-weakref-typo-introduce.patch
       (Closes: #692313)
+  * Boost python-dev to Recommends from Suggests for most common usage
+    scenarios (Closes: #545809).  Also list python3-dev instead
+    of python-dev for cython3 package.
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 03 Dec 2012 10:59:34 -0500
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 05 Dec 2012 12:28:05 -0500
 
 cython (0.17.1-1) experimental; urgency=low
 
