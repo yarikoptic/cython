@@ -1,3 +1,13 @@
+cython (0.17.2-1) unstable; urgency=low
+
+  * Bugfix upstream release with post-release fixes:
+    - 0001-keep-longness-when-folding-negative-integer-constant.patch
+    - 0003-Fix-compiler-crash.patch
+    - 0005-fix-cimport-cython-in-string-code-fragments.patch
+    - 0006-fix-refnanny-code-for-del-statement-inside-of-genera.patch
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 03 Dec 2012 10:59:34 -0500
+
 cython (0.17.1-1) experimental; urgency=low
 
   * Bugfix release
