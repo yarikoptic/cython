@@ -3,7 +3,14 @@ Section: python
 Priority: optional
 Maintainer: Python Applications Packaging Team <python-apps-team@lists.alioth.debian.org>
 Uploaders: Ondrej Certik <ondrej@certik.cz>, Yaroslav Halchenko <debian@onerussian.com>
-Build-Depends: debhelper (>= 7.0.50~), python-all-dev (>= 2.6.6-3~), python-all-dbg, help2man (>= 1.37.1~), python-numpy, python3-all-dev, python3-all-dbg, python3-numpy
+Build-Depends: debhelper (>= 7.0.50~),
+               python-all-dev (>= 2.6.6-3~), python-all-dbg,
+               help2man (>= 1.37.1~),
+               python-sphinx,
+               python-numpy,
+               python3-all-dev,
+               python3-all-dbg,
+               python3-numpy
 Standards-Version: 3.9.3
 Homepage: http://cython.org/
 Vcs-Svn: svn://svn.debian.org/svn/python-apps/packages/cython/trunk
@@ -32,7 +39,7 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: ${python:Depends}, ${misc:Depends}, ${shlibs:Depends}, cython (= ${binary:Version})
-Description: C-Extensions for Python (Debug Build of Cython)
+Description: C-Extensions for Python - debug build
  This package contains Cython libraries built against versions of
  Python configured with --pydebug.
 
@@ -58,6 +65,15 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: ${python3:Depends}, ${misc:Depends}, ${shlibs:Depends}, cython3 (= ${binary:Version})
-Description: C-Extensions for Python 3 (Debug Build of Cython)
+Description: C-Extensions for Python 3 - debug build
  This package contains Cython libraries built against versions of
  Python configured with --pydebug.
+
+Package: cython-doc
+Architecture: all
+Section: doc
+Depends: ${misc:Depends}, libjs-jquery
+Suggests: cython
+Description: C-Extensions for Python - documentation
+ This package contains documentation for Cython.
+
