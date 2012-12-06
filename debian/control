@@ -13,7 +13,7 @@ XS-DM-Upload-Allowed: yes
 Package: cython
 Architecture: any
 Depends: ${python:Depends}, ${misc:Depends}, ${shlibs:Depends}
-Suggests: python-dev, gcc
+Recommends: python-dev, gcc
 Description: C-Extensions for Python
  Cython is a language that makes writing C extensions for the Python language as
  easy as Python itself. Cython is based on the well-known Pyrex, but supports
@@ -32,7 +32,6 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: ${python:Depends}, ${misc:Depends}, ${shlibs:Depends}, cython (= ${binary:Version})
-Suggests: gcc
 Description: C-Extensions for Python (Debug Build of Cython)
  This package contains Cython libraries built against versions of
  Python configured with --pydebug.
@@ -40,7 +39,7 @@ Description: C-Extensions for Python (Debug Build of Cython)
 Package: cython3
 Architecture: any
 Depends: ${python3:Depends}, ${misc:Depends}, ${shlibs:Depends}
-Suggests: python-dev, gcc
+Recommends: python3-dev, gcc
 Description: C-Extensions for Python 3
  Cython is a language that makes writing C extensions for the Python language as
  easy as Python itself. Cython is based on the well-known Pyrex, but supports
@@ -59,7 +58,6 @@ Architecture: any
 Section: debug
 Priority: extra
 Depends: ${python3:Depends}, ${misc:Depends}, ${shlibs:Depends}, cython3 (= ${binary:Version})
-Suggests: gcc
 Description: C-Extensions for Python 3 (Debug Build of Cython)
  This package contains Cython libraries built against versions of
  Python configured with --pydebug.
