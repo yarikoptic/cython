@@ -1,3 +1,10 @@
+cython (0.17.2-1+bnd1) UNRELEASED; urgency=low
+
+  * debian/patches/squeeze-dsc-patch for a non-official backport build for
+    squeeze
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Sat, 15 Dec 2012 23:06:59 -0500
+
 cython (0.17.2-1) experimental; urgency=low
 
   * Bugfix upstream release with post-release fixes:
