@@ -2,6 +2,9 @@ cython (0.17.3-1) experimental; urgency=low
 
   * Bugfix upstream release:
     - upstream includes all previously shipped patches
+    - provides CHANGES.rst (was missing from source distribution,
+      up_changes_rst patch provides a copy), so all machinery for fetching
+      changelogs from wiki is removed
 
  -- Yaroslav Halchenko <debian@onerussian.com>  Thu, 20 Dec 2012 12:34:19 -0500
 

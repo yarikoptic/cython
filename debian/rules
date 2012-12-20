@@ -6,9 +6,6 @@ WGET_AGENT_STRING="Lynx/2.8.8dev.4 libwww-FM/2.14 SSL-MM/1.4.1 GNUTLS/2.8.6"
 WGET=wget -q --user-agent=$(WGET_AGENT_STRING)
 WIKI_URL=http://wiki.cython.org
 
-# Directory where to store upstream changelogs
-CHANGELOGS=debian/changelogs
-
 # Python versions
 PYDEF=$(shell pyversions -dv)
 PY2VERS=$(shell pyversions -vr)
@@ -71,14 +68,8 @@ override_dh_install:
 	rm -rf debian/cython3-dbg/usr/share/doc/cython3-dbg
 	dh_link -pcython3-dbg usr/share/doc/cython3 usr/share/doc/cython3-dbg
 
-override_dh_installchangelogs:
-	dh_installchangelogs -pcython $(CHANGELOGS)/ReleaseHistory
-	dh_installchangelogs -pcython3 $(CHANGELOGS)/ReleaseHistory
 
-override_dh_installdocs: assure-changelogs
-	dh_installdocs -pcython $(CHANGELOGS)/ReleaseNotes-*
-	dh_installdocs -pcython3 $(CHANGELOGS)/ReleaseNotes-*
-
+override_dh_installdocs:
 	: # Build Documentation
 ifeq (,$(filter nodoc,$(DEB_BUILD_OPTIONS)))
 ifneq (,$(findstring -a,$(DH_INTERNAL_OPTIONS)))
@@ -90,6 +81,11 @@ else
 	dh_installdocs -pcython-doc
 endif
 endif
+
+
+override_dh_installchangelogs:
+	dh_installchangelogs --all CHANGES.rst
+
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
@@ -110,34 +106,7 @@ override_dh_strip:
 	dh_strip -pcython --dbg-package=cython-dbg
 	dh_strip -pcython3 --dbg-package=cython3-dbg
 
-override_dh_auto_clean: assure-changelogs
+override_dh_auto_clean:
 	rm -rf build
 	find -name "*.py[oc]" -type f -delete
 
-# To fetch and update upstream Changelogs
-DEB_UPSTREAM_VERSION=$(shell dpkg-parsechangelog | sed -rne 's,^Version: ([^-]+).*,\1,p')
-
-# Notes:
-#  SED is used to do minor de-wikification to make text readable
-get-changelogs:
-	mkdir -p $(CHANGELOGS)
-	: # Fetching ReleaseHistory and other available ReleaseNotes
-	@release_notes=`$(WGET) -O- '$(WIKI_URL)/ReleaseHistory?action=raw' | sed -n -e '1,/^=/p' | grep ReleaseNotes | sed -e 's/.*\[\([^]]*\)\].*/\1/g'`; \
-	for rnotes in ReleaseHistory $$release_notes; do \
-		rnotes_url=$(WIKI_URL)/$$rnotes; \
-		echo "Fetching $$rnotes_url"; \
-		{ \
-		 echo "Fetched from $$rnotes_url on `date`\n"; \
-		 $(WGET) -O- "$$rnotes_url?action=raw" \
-		 | sed -e 's,\({{{\|}}}\),,g' -e 's,\[\[\([^]]*\)|[^]]*\]\],\1,g' -e 's/\r//'; \
-		} >| $(CHANGELOGS)/$$rnotes; \
-	 done
-
-# Assure presence of a changelog for current upstream release
-assure-changelogs:
-	@: "Assure present upstream changelog file"
-	@if [ ! -e $(CHANGELOGS)/ReleaseNotes-"$(DEB_UPSTREAM_VERSION)" ] && ! grep -q '^$(DEB_UPSTREAM_VERSION)$$' $(CHANGELOGS)/skip ; then \
-		echo >&2 "E: ReleaseNotes for $(DEB_UPSTREAM_VERSION) are missing from $(CHANGELOGS)"; \
-		echo >&2 "I: Run 'debian/rules get-changelogs' or add version into $(CHANGELOGS)/skip"; \
-		exit 1; \
-	fi
