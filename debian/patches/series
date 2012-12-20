@@ -1,6 +1,0 @@
-0001-keep-longness-when-folding-negative-integer-constant.patch
-0003-Fix-compiler-crash.patch
-0005-fix-cimport-cython-in-string-code-fragments.patch
-0006-fix-refnanny-code-for-del-statement-inside-of-genera.patch
-0001-fix-analysis-of-entry-to-be-a-weakref-typo-introduce.patch
-fix-ma-includes.patch
