@@ -72,7 +72,7 @@ Description: C-Extensions for Python 3 - debug build
 Package: cython-doc
 Architecture: all
 Section: doc
-Depends: ${misc:Depends}, libjs-jquery
+Depends: ${misc:Depends}, libjs-jquery, libjs-underscore
 Suggests: cython
 Description: C-Extensions for Python - documentation
  This package contains documentation for Cython.

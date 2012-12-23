@@ -74,13 +74,15 @@ override_dh_installdocs:
 ifeq (,$(filter nodoc,$(DEB_BUILD_OPTIONS)))
 ifneq (,$(findstring -a,$(DH_INTERNAL_OPTIONS)))
 	: # not building documentation in -a
+	: # just faking having documentation so that dh-installdocs doesn't fail
+	mkdir -p docs/build/html
 else
 	make -C docs html
-	: # Use jquery from Debian package, so prune shipped one
-	-rm docs/build/html/_static/jquery.js
-	dh_installdocs -pcython-doc
+	: # Use jquery/underscore from Debian package, so prune shipped one
+	-rm docs/build/html/_static/jquery.js docs/build/html/_static/underscore.js
 endif
 endif
+	dh_installdocs
 
 
 override_dh_installchangelogs:
