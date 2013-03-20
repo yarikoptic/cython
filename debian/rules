@@ -82,7 +82,7 @@ else
 	-rm docs/build/html/_static/jquery.js docs/build/html/_static/underscore.js
 endif
 endif
-	dh_installdocs
+	dh_installdocs -A debian/upstream
 
 
 override_dh_installchangelogs:

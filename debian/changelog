@@ -1,3 +1,11 @@
+cython (0.17.3-2) UNRELEASED; urgency=low
+
+  * debian/upstream
+    - added to facilitate referencing etc.
+    - added to be installed among docs
+
+ -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 20 Mar 2013 12:29:00 -0400
+
 cython (0.17.3-1) experimental; urgency=low
 
   * Bugfix upstream release:
