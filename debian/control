@@ -15,7 +15,6 @@ Standards-Version: 3.9.3
 Homepage: http://cython.org/
 Vcs-Svn: svn://anonscm.debian.org/python-apps/packages/cython/trunk/
 Vcs-Browser: http://anonscm.debian.org/viewvc/python-apps/packages/cython/trunk/
-XS-DM-Upload-Allowed: yes
 
 Package: cython
 Architecture: any

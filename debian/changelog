@@ -7,8 +7,10 @@ cython (0.17.3-2) UNRELEASED; urgency=low
 
   [ Jakub Wilk ]
   * Use canonical URIs for Vcs-* fields.
+  * Remove DM-Upload-Allowed; it's no longer used by the archive
+    software.
 
- -- Jakub Wilk <jwilk@debian.org>  Sun, 05 May 2013 18:04:57 +0200
+ -- Jakub Wilk <jwilk@debian.org>  Sun, 05 May 2013 18:43:32 +0200
 
 cython (0.17.3-1) experimental; urgency=low
 
