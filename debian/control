@@ -13,8 +13,8 @@ Build-Depends: debhelper (>= 7.0.50~),
                python3-numpy
 Standards-Version: 3.9.3
 Homepage: http://cython.org/
-Vcs-Svn: svn://svn.debian.org/svn/python-apps/packages/cython/trunk
-Vcs-Browser: http://svn.debian.org/viewsvn/python-apps/packages/cython/trunk/
+Vcs-Svn: svn://anonscm.debian.org/python-apps/packages/cython/trunk/
+Vcs-Browser: http://anonscm.debian.org/viewvc/python-apps/packages/cython/trunk/
 XS-DM-Upload-Allowed: yes
 
 Package: cython

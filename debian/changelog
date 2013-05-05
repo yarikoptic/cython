@@ -1,10 +1,14 @@
 cython (0.17.3-2) UNRELEASED; urgency=low
 
+  [ Yaroslav Halchenko ]
   * debian/upstream
     - added to facilitate referencing etc.
     - added to be installed among docs
 
- -- Yaroslav Halchenko <debian@onerussian.com>  Wed, 20 Mar 2013 12:29:00 -0400
+  [ Jakub Wilk ]
+  * Use canonical URIs for Vcs-* fields.
+
+ -- Jakub Wilk <jwilk@debian.org>  Sun, 05 May 2013 18:04:57 +0200
 
 cython (0.17.3-1) experimental; urgency=low
 
