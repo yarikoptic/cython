@@ -1,6 +1,7 @@
-cython (0.17.3-2) UNRELEASED; urgency=low
+cython (0.19+git51-g3078752-1) unstable; urgency=low
 
   [ Yaroslav Halchenko ]
+  * Fresh upstream post-release snapshot
   * debian/upstream
     - added to facilitate referencing etc.
     - added to be installed among docs
@@ -10,7 +11,7 @@ cython (0.17.3-2) UNRELEASED; urgency=low
   * Remove DM-Upload-Allowed; it's no longer used by the archive
     software.
 
- -- Jakub Wilk <jwilk@debian.org>  Sun, 05 May 2013 18:43:32 +0200
+ -- Yaroslav Halchenko <debian@onerussian.com>  Mon, 06 May 2013 08:53:12 -0400
 
 cython (0.17.3-1) experimental; urgency=low
 
