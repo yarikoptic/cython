@@ -82,7 +82,9 @@ else
 	-rm docs/build/html/_static/jquery.js docs/build/html/_static/underscore.js
 endif
 endif
-	dh_installdocs -A debian/upstream
+	dh_installdocs --package=cython --package=cython-dbg --link-doc=cython debian/upstream
+	dh_installdocs --package=cython3 --package=cython3-dbg --link-doc=cython3 debian/upstream
+	dh_installdocs --package=cython-doc debian/upstream
 
 
 override_dh_installchangelogs:

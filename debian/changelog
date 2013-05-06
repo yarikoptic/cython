@@ -7,6 +7,10 @@ cython (0.19+git51-g3078752-1) unstable; urgency=low
     - added to be installed among docs
   * debian/copyright
     - machine readable now (and correct license Apache-2.0)
+  * debian/rules
+    - use explicit --link-doc for dh_installdocs to get correct
+      links for doc/ directories of -dbg packages
+      (Closes: #683676, #691704)
 
   [ Jakub Wilk ]
   * Use canonical URIs for Vcs-* fields.
